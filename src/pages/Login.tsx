@@ -42,11 +42,11 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #172554 100%)' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0f172a 100%)' }}>
       {/* Top bar */}
       <div className="w-full py-4 px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {company?.logo_url && <img src={company.logo_url} alt="" className="h-10" />}
+          {company?.logo_url && <div className="bg-white rounded-xl px-3 py-2 inline-block"><img src={company.logo_url} alt="" className="h-10" /></div>}
           <span className="text-white font-bold text-lg hidden sm:block">{company?.company_name || 'TitleFlow'}</span>
         </div>
         {company?.phone && <a href={`tel:${company.phone}`} className="text-blue-200 hover:text-white text-sm">{company.phone}</a>}
@@ -57,7 +57,9 @@ export default function Login() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             {company?.logo_url ? (
-              <img src={company.logo_url} alt={company?.company_name} className="h-20 mx-auto mb-4 drop-shadow-lg" />
+              <div className="bg-white rounded-xl px-4 py-3 inline-block shadow-lg mb-4">
+                <img src={company.logo_url} alt={company?.company_name} className="h-16 mx-auto" />
+              </div>
             ) : (
               <h1 className="text-3xl font-bold text-white mb-2">{company?.company_name || 'TitleFlow'}</h1>
             )}

@@ -18,17 +18,20 @@ export default function Navbar() {
     }`;
 
   return (
-    <nav className="sticky top-0 z-40 shadow-md" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)' }}>
+    <nav className="sticky top-0 z-40 shadow-md" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
 
           <Link to="/dashboard" className="flex items-center gap-2.5 shrink-0">
             {company?.logo_url ? (
-              <img src={company.logo_url} alt={company.company_name} className="h-9 w-auto" />
-            ) : null}
-            <span className="text-white font-bold text-base hidden sm:block">
-              {company?.company_name || 'TitleFlow'}
-            </span>
+              <div className="bg-white rounded-lg px-2 py-1">
+                <img src={company.logo_url} alt={company.company_name} className="h-8 w-auto" />
+              </div>
+            ) : (
+              <span className="text-white font-bold text-base">
+                {company?.company_name || 'TitleFlow'}
+              </span>
+            )}
           </Link>
 
           <div className="hidden md:flex items-center gap-1">
