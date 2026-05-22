@@ -50,7 +50,7 @@ function ActionBar({ result, inputData, sheetType, onBack }: { result: any; inpu
         output_data: result,
       });
       setSaved(res.data);
-    } catch (e: any) { alert('Save failed: ' + (e.response?.data?.detail || e.message)); }
+    } catch (e: any) { console.error('Save error:', e.response?.data || e); alert('Save failed: ' + JSON.stringify(e.response?.data?.detail || e.message)); }
     setSaving(false);
   };
 
@@ -70,7 +70,7 @@ function ActionBar({ result, inputData, sheetType, onBack }: { result: any; inpu
     if (!id) { alert('Save the sheet first before downloading PDF.'); return; }
     setDownloading(true);
     try {
-      const res = await api.get(`/saved_sheets/${id}/pdf`, { responseType: 'blob' });
+      const res = await api.get(`/saved_sheets_export/${id}/pdf`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a'); a.href = url; a.download = `net_sheet_${id}.pdf`; a.click();
       window.URL.revokeObjectURL(url);
