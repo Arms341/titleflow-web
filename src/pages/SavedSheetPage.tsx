@@ -4,10 +4,197 @@ import { useState } from 'react';
 
 const fmt = (v: any) => { if (v == null) return '-'; const n = typeof v === 'string' ? parseFloat(v) : v; if (isNaN(n)) return '-'; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n); };
 
+// -- Order Submission Form Modal --
+function OrderFormModal({ sheet, onClose, onSuccess }: { sheet: any; onClose: () => void; onSuccess: (order: any) => void }) {
+  const inp = sheet.input_data || {};
+  const out = sheet.output_data || {};
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    buyer_name: sheet.sheet_type === 'buyer' ? (sheet.client_name || inp.client_name || '') : '',
+    buyer_email: '',
+    buyer_phone: '',
+    seller_name: sheet.sheet_type === 'seller' ? (sheet.client_name || inp.client_name || '') : '',
+    seller_email: '',
+    seller_phone: '',
+    lender_name: '',
+    loan_officer_name: '',
+    escrow_officer_preference: '',
+    property_address: sheet.property_address || inp.property_address || '',
+    contract_date: '',
+    estimated_closing_date: inp.closing_date || '',
+    notes: '',
+  });
+
+  const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await api.post('/orders/', {
+        ...form,
+        saved_sheet_id: sheet.id,
+        order_type: 'purchase',
+        status: 'submitted',
+        contract_date: form.contract_date || null,
+        estimated_closing_date: form.estimated_closing_date || null,
+      });
+      onSuccess(res.data);
+    } catch (e: any) {
+      setError(e.response?.data?.detail || e.message || 'Submission failed');
+    }
+    setSubmitting(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white border-b px-6 py-4 rounded-t-xl">
+          <h2 className="text-lg font-bold text-gray-900">Submit Title Order</h2>
+          <p className="text-sm text-gray-500">Complete the details below to submit to HUB City Title</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Property */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 uppercase mb-3">Property</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="md:col-span-2">
+                <label className="block text-xs text-gray-500 mb-1">Property Address</label>
+                <input type="text" value={form.property_address} onChange={e => update('property_address', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Contract Date</label>
+                <input type="date" value={form.contract_date} onChange={e => update('contract_date', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Estimated Closing Date</label>
+                <input type="date" value={form.estimated_closing_date} onChange={e => update('estimated_closing_date', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+            </div>
+          </div>
+
+          {/* Seller */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 uppercase mb-3">Seller</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Name</label>
+                <input type="text" value={form.seller_name} onChange={e => update('seller_name', e.target.value)}
+                  placeholder="Jane Doe"
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Email</label>
+                <input type="email" value={form.seller_email} onChange={e => update('seller_email', e.target.value)}
+                  placeholder="jane@email.com"
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Phone</label>
+                <input type="tel" value={form.seller_phone} onChange={e => update('seller_phone', e.target.value)}
+                  placeholder="(806) 555-1234"
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+            </div>
+          </div>
+
+          {/* Buyer */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 uppercase mb-3">Buyer</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Name</label>
+                <input type="text" value={form.buyer_name} onChange={e => update('buyer_name', e.target.value)}
+                  placeholder="John Smith"
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Email</label>
+                <input type="email" value={form.buyer_email} onChange={e => update('buyer_email', e.target.value)}
+                  placeholder="john@email.com"
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Phone</label>
+                <input type="tel" value={form.buyer_phone} onChange={e => update('buyer_phone', e.target.value)}
+                  placeholder="(806) 555-5678"
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+            </div>
+          </div>
+
+          {/* Lender */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 uppercase mb-3">Lender</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Lender Name</label>
+                <input type="text" value={form.lender_name} onChange={e => update('lender_name', e.target.value)}
+                  placeholder="First National Bank"
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Loan Officer</label>
+                <input type="text" value={form.loan_officer_name} onChange={e => update('loan_officer_name', e.target.value)}
+                  placeholder="Mike Johnson"
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Escrow Officer Preference</label>
+                <input type="text" value={form.escrow_officer_preference} onChange={e => update('escrow_officer_preference', e.target.value)}
+                  placeholder="Optional"
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Notes for Title Company</label>
+            <textarea value={form.notes} onChange={e => update('notes', e.target.value)}
+              rows={3} placeholder="Any special instructions or notes..."
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none" />
+          </div>
+
+          {/* Sheet Reference */}
+          <div className="bg-gray-50 rounded-lg border p-3">
+            <p className="text-xs text-gray-500">
+              Linked to {sheet.sheet_type === 'seller' ? 'Seller Net Sheet' : 'Buyer Estimate'} &mdash;
+              {out.net_proceeds ? ` Net: ${fmt(out.net_proceeds)}` : out.cash_to_close ? ` Cash to Close: ${fmt(out.cash_to_close)}` : ''}
+              {sheet.property_address ? ` at ${sheet.property_address}` : ''}
+            </p>
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
+          )}
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose}
+              className="px-4 py-2.5 text-sm text-gray-700 border rounded-lg hover:bg-gray-50">Cancel</button>
+            <button type="submit" disabled={submitting}
+              className="px-6 py-2.5 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 shadow-md text-sm disabled:opacity-50">
+              {submitting ? 'Submitting...' : 'Submit Title Order'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// -- Sheet Detail View --
 function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [showOrderForm, setShowOrderForm] = useState(false);
   const [submitted, setSubmitted] = useState<any>(null);
   const out = sheet.output_data || {};
   const inp = sheet.input_data || {};
@@ -30,25 +217,6 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
       window.URL.revokeObjectURL(url);
     } catch (e: any) { alert('PDF failed: ' + (e.response?.data?.detail || e.message)); }
     setDownloading(false);
-  };
-
-  const handleSubmitOrder = async () => {
-    if (!confirm('Submit this net sheet as a title order to HUB City Title?')) return;
-    setSubmitting(true);
-    try {
-      const res = await api.post('/orders/', {
-        saved_sheet_id: sheet.id,
-        order_type: 'purchase',
-        property_address: sheet.property_address || inp.property_address || '',
-        seller_name: sheet.sheet_type === 'seller' ? (sheet.client_name || inp.client_name || '') : '',
-        buyer_name: sheet.sheet_type === 'buyer' ? (sheet.client_name || inp.client_name || '') : '',
-        estimated_closing_date: inp.closing_date || null,
-        notes: `Submitted from ${sheet.sheet_type === 'seller' ? 'Seller Net Sheet' : 'Buyer Estimate'} — Net: ${out.net_proceeds ? fmt(out.net_proceeds) : out.cash_to_close ? fmt(out.cash_to_close) : 'N/A'}`,
-        status: 'pending',
-      });
-      setSubmitted(res.data);
-    } catch (e: any) { alert('Submit failed: ' + (e.response?.data?.detail || e.message)); }
-    setSubmitting(false);
   };
 
   return (
@@ -118,21 +286,21 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-amber-900">Ready to open a title order?</h3>
-                <p className="text-sm text-amber-700">Submit this sheet to HUB City Title for processing</p>
+                <p className="text-sm text-amber-700">Fill out buyer, seller, and lender details to submit</p>
               </div>
-              <button onClick={handleSubmitOrder} disabled={submitting}
+              <button onClick={() => setShowOrderForm(true)}
                 className="px-6 py-3 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 shadow-md text-sm whitespace-nowrap">
-                {submitting ? 'Submitting...' : '📋 Submit Title Order'}
+                Submit Title Order
               </button>
             </div>
           </div>
         ) : (
           <div className="mb-6 p-4 bg-emerald-50 border-2 border-emerald-300 rounded-lg">
             <div className="flex items-center gap-3">
-              <span className="text-3xl">✅</span>
+              <span className="text-3xl">&#10003;</span>
               <div>
                 <h3 className="font-bold text-emerald-900">Title Order Submitted!</h3>
-                <p className="text-sm text-emerald-700">Order #{submitted.id} — Status: {submitted.status || 'pending'}</p>
+                <p className="text-sm text-emerald-700">Order #{submitted.id} &mdash; Status: {submitted.status || 'submitted'}</p>
                 <p className="text-xs text-emerald-600 mt-1">HUB City Title will process your order. Check the Orders tab for updates.</p>
               </div>
             </div>
@@ -141,12 +309,12 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
 
         {/* Share / PDF / Email buttons */}
         <div className="flex flex-wrap gap-3">
-          <button onClick={handleShare} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm">🔗 Share with Client</button>
+          <button onClick={handleShare} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm">Share with Client</button>
           <button onClick={handlePdf} disabled={downloading} className="flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm">
-            {downloading ? 'Generating...' : '📄 Download PDF'}
+            {downloading ? 'Generating...' : 'Download PDF'}
           </button>
           <button onClick={() => { const mailto = `mailto:?subject=Net Sheet - ${sheet.property_address || 'Property'}&body=View your net sheet here: ${shareUrl || 'Please click Share first to generate a link'}`; window.open(mailto); }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium text-sm">✉️ Email to Client</button>
+            className="flex items-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium text-sm">Email to Client</button>
         </div>
 
         {shareUrl && (
@@ -156,10 +324,20 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
           </div>
         )}
       </div>
+
+      {/* Order Form Modal */}
+      {showOrderForm && (
+        <OrderFormModal
+          sheet={sheet}
+          onClose={() => setShowOrderForm(false)}
+          onSuccess={(order) => { setShowOrderForm(false); setSubmitted(order); }}
+        />
+      )}
     </div>
   );
 }
 
+// -- Saved Sheets List --
 export default function SavedSheetPage() {
   const queryClient = useQueryClient();
   const [viewing, setViewing] = useState<any>(null);
@@ -186,7 +364,7 @@ export default function SavedSheetPage() {
 
       {list.length === 0 ? (
         <div className="text-center p-12 bg-gray-50 rounded-lg border">
-          <p className="text-4xl mb-3">📝</p>
+          <p className="text-4xl mb-3">&#128221;</p>
           <p className="text-gray-500">No saved sheets yet</p>
           <p className="text-gray-400 text-sm mt-1">Calculate a net sheet or buyer estimate, then click Save</p>
         </div>
@@ -219,8 +397,8 @@ export default function SavedSheetPage() {
                     <td className="px-4 py-3 text-sm text-gray-500">{s.created_at ? new Date(s.created_at).toLocaleDateString() : '-'}</td>
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <div className="flex gap-1">
-                        <button onClick={() => setViewing(s)} className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200" title="View">👁️</button>
-                        <button onClick={() => { if (confirm('Delete this sheet?')) deleteMutation.mutate(s.id); }} className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200" title="Delete">🗑️</button>
+                        <button onClick={() => setViewing(s)} className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200" title="View">View</button>
+                        <button onClick={() => { if (confirm('Delete this sheet?')) deleteMutation.mutate(s.id); }} className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200" title="Delete">Delete</button>
                       </div>
                     </td>
                   </tr>

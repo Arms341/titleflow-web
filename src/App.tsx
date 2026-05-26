@@ -1,8 +1,5 @@
-// Universal App Router v1.0.0
-// Locked UNIVERSAL template — works for ANY gig type.
-// Provides: Login, Register, Dashboard, NotFound + protected layout.
-// Gig-specific routes are added by gig-specific App.tsx overrides.
-// If no gig override exists, this generic router handles everything.
+// TitleFlow App Router v1.1.0
+// Added /profile (agent self-service) and /admin (admin dashboard).
 
 import { Routes, Route } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -27,6 +24,8 @@ import ReissueDiscountsPage from '@/pages/ReissueDiscountsPage';
 import SavedSheetPage from '@/pages/SavedSheetPage';
 import SavedSheetsExportPage from '@/pages/SavedSheetsExportPage';
 import CalculatorPage from '@/pages/CalculatorPage';
+import ProfilePage from '@/pages/ProfilePage';
+import AdminPage from '@/pages/AdminPage';
 
 export default function App() {
   return (
@@ -46,6 +45,8 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="admin" element={<AdminPage />} />
         <Route path="companies" element={<CompanyPage />} />
         <Route path="contact" element={<ContactPage />} />
         <Route path="contacts" element={<ContactsPage />} />
