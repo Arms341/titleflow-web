@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
@@ -124,6 +124,44 @@ function OrderFormModal({ sheet, onClose, onSuccess }: { sheet: any; onClose: ()
   );
 }
 
+function SignaturePadFullScreen({ sheet, onClose, onSigned }: { sheet: any; onClose: () => void; onSigned: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [drawing, setDrawing] = useState(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
+  const [signerName, setSignerName] = useState(sheet.client_name || '');
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    const ctx = canvas.getContext('2d'); if (!ctx) return;
+    const dpr = window.devicePixelRatio || 1; const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr); ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  }, []);
+  const getPos = (e: React.MouseEvent | React.TouchEvent) => { const r = canvasRef.current!.getBoundingClientRect(); if ('touches' in e) return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top }; return { x: (e as React.MouseEvent).clientX - r.left, y: (e as React.MouseEvent).clientY - r.top }; };
+  const start = (e: React.MouseEvent | React.TouchEvent) => { e.preventDefault(); const ctx = canvasRef.current?.getContext('2d'); if (!ctx) return; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); setDrawing(true); setHasDrawn(true); };
+  const draw = (e: React.MouseEvent | React.TouchEvent) => { if (!drawing) return; e.preventDefault(); const ctx = canvasRef.current?.getContext('2d'); if (!ctx) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+  const stop = () => setDrawing(false);
+  const clear = () => { const c = canvasRef.current; if (!c) return; c.getContext('2d')?.clearRect(0, 0, c.width, c.height); setHasDrawn(false); };
+  const submit = async () => {
+    if (!canvasRef.current || !hasDrawn) return; setSubmitting(true);
+    try { await api.post(`/saved_sheets/${sheet.id}/sign`, { signature: canvasRef.current.toDataURL('image/png'), signer_name: signerName }); setDone(true); setTimeout(() => { onSigned(); onClose(); }, 2000); }
+    catch (e: any) { alert(e.response?.data?.detail || 'Signature failed'); } setSubmitting(false);
+  };
+  if (done) return (<div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center"><div className="text-6xl mb-4">&#9989;</div><h2 className="text-2xl font-bold text-emerald-800">Signed Successfully</h2><p className="text-gray-500 mt-2">Thank you, {signerName || 'Client'}!</p></div>);
+  return (
+    <div className="fixed inset-0 z-50 bg-white flex flex-col">
+      <div className="bg-slate-800 text-white px-6 py-4 flex items-center justify-between shrink-0"><div><h2 className="text-lg font-bold">Client Signature</h2><p className="text-sm text-slate-300">{sheet.property_address || 'Net Sheet'}</p></div><button onClick={onClose} className="text-slate-300 hover:text-white text-2xl px-2">&times;</button></div>
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-4 max-w-lg mx-auto w-full">
+        <p className="text-gray-600 text-center mb-4">By signing below, I acknowledge that I have reviewed the {sheet.sheet_type === 'seller' ? 'seller net sheet' : 'buyer estimate'} and understand that figures shown are estimates.</p>
+        <div className="w-full mb-4"><label className="block text-sm text-gray-500 mb-1">Your Name</label><input type="text" value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Full Name" className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" /></div>
+        <div className="w-full border-2 border-gray-300 rounded-lg bg-gray-50 relative mb-4" style={{ touchAction: 'none' }}><canvas ref={canvasRef} className="w-full cursor-crosshair" style={{ height: '200px' }} onMouseDown={start} onMouseMove={draw} onMouseUp={stop} onMouseLeave={stop} onTouchStart={start} onTouchMove={draw} onTouchEnd={stop} /><div className="absolute bottom-3 left-4 right-4 border-b border-gray-400" /><span className="absolute bottom-1 left-4 text-xs text-gray-400">Sign here</span></div>
+        <div className="w-full flex gap-3"><button onClick={clear} className="flex-1 py-3 text-gray-700 border-2 border-gray-300 rounded-lg text-base font-medium hover:bg-gray-50">Clear</button><button onClick={submit} disabled={!hasDrawn || submitting} className="flex-[2] py-3 bg-emerald-600 text-white rounded-lg text-base font-bold hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">{submitting ? 'Saving...' : 'Confirm Signature'}</button></div>
+      </div>
+    </div>
+  );
+}
+
 function ActionBar({ result, inputData, sheetType, onBack }: { result: any; inputData: any; sheetType: string; onBack: () => void }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<any>(null);
@@ -131,6 +169,8 @@ function ActionBar({ result, inputData, sheetType, onBack }: { result: any; inpu
   const [downloading, setDownloading] = useState(false);
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [orderSubmitted, setOrderSubmitted] = useState<any>(null);
+  const [showSignature, setShowSignature] = useState(false);
+  const [isSigned, setIsSigned] = useState(false);
   const handleSave = async () => {
     setSaving(true);
     try { const res = await api.post('/saved_sheets/', { sheet_type: sheetType, property_address: inputData.property_address || '', client_name: inputData.client_name || '', county_id: inputData.county_id ? parseInt(inputData.county_id) : null, input_data: inputData, output_data: result }); setSaved(res.data); } catch (e: any) { console.error('Save error', e); }
@@ -162,10 +202,15 @@ function ActionBar({ result, inputData, sheetType, onBack }: { result: any; inpu
       ) : (
         <>
           {!orderSubmitted ? (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button onClick={handleShare} className="py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">Share</button>
               <button onClick={handlePdf} disabled={downloading} className="py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700">{downloading ? '...' : 'PDF'}</button>
               <button onClick={() => setShowOrderForm(true)} className="py-2 bg-amber-600 text-white rounded-md text-sm hover:bg-amber-700 font-semibold">Submit Order</button>
+              {!isSigned ? (
+                <button onClick={() => setShowSignature(true)} className="py-2 bg-emerald-600 text-white rounded-md text-sm hover:bg-emerald-700 font-semibold">Get Signature</button>
+              ) : (
+                <span className="py-2 bg-emerald-100 text-emerald-800 rounded-md text-sm text-center font-medium">Signed &#10003;</span>
+              )}
             </div>
           ) : (
             <div className="p-3 bg-emerald-50 border-2 border-emerald-300 rounded-lg">
@@ -181,6 +226,7 @@ function ActionBar({ result, inputData, sheetType, onBack }: { result: any; inpu
       )}
       {shareUrl && (<div className="w-full p-3 bg-blue-50 border border-blue-200 rounded-md"><p className="text-sm text-blue-800 font-medium">Share link ready!</p><a href={shareUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline break-all">{shareUrl}</a></div>)}
       {showOrderForm && saved && <OrderFormModal sheet={{ ...saved, input_data: inputData, output_data: result, sheet_type: sheetType }} onClose={() => setShowOrderForm(false)} onSuccess={(order) => { setShowOrderForm(false); setOrderSubmitted(order); }} />}
+      {showSignature && saved && <SignaturePadFullScreen sheet={{ ...saved, input_data: inputData, output_data: result, sheet_type: sheetType, property_address: inputData.property_address || '', client_name: inputData.client_name || '' }} onClose={() => setShowSignature(false)} onSigned={() => setIsSigned(true)} />}
     </div>
   );
 }
