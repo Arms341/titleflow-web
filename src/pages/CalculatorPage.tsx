@@ -59,11 +59,74 @@ function Placeholder() {
   );
 }
 
+function OrderFormModal({ sheet, onClose, onSuccess }: { sheet: any; onClose: () => void; onSuccess: (order: any) => void }) {
+  const inp = sheet.input_data || {};
+  const out = sheet.output_data || {};
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    buyer_name: sheet.sheet_type === 'buyer' ? (sheet.client_name || inp.client_name || '') : '',
+    buyer_email: '', buyer_phone: '',
+    seller_name: sheet.sheet_type === 'seller' ? (sheet.client_name || inp.client_name || '') : '',
+    seller_email: '', seller_phone: '',
+    lender_name: '', loan_officer_name: '', escrow_officer_preference: '',
+    property_address: sheet.property_address || inp.property_address || '',
+    contract_date: '', estimated_closing_date: inp.closing_date || '',
+    notes: '',
+  });
+  const upd = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); setSubmitting(true); setError(null);
+    try {
+      const res = await api.post('/orders/', { ...form, saved_sheet_id: sheet.id, order_type: 'purchase', status: 'submitted', contract_date: form.contract_date || null, estimated_closing_date: form.estimated_closing_date || null });
+      onSuccess(res.data);
+    } catch (e: any) { setError(e.response?.data?.detail || 'Submission failed'); }
+    setSubmitting(false);
+  };
+  const fi = (label: string, field: string, type = 'text', ph = '') => (
+    <div><label className="block text-xs text-gray-500 mb-1">{label}</label>
+    <input type={type} value={(form as any)[field]} onChange={e => upd(field, e.target.value)} placeholder={ph}
+      className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" /></div>
+  );
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white border-b px-6 py-4 rounded-t-xl">
+          <h2 className="text-lg font-bold text-gray-900">Submit Title Order</h2>
+          <p className="text-sm text-gray-500">Complete the details below to submit to HUB City Title</p>
+        </div>
+        <form onSubmit={submit} className="p-6 space-y-5">
+          <div><h3 className="text-sm font-semibold text-gray-700 uppercase mb-2">Property</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="md:col-span-2">{fi('Property Address', 'property_address')}</div>
+              {fi('Contract Date', 'contract_date', 'date')}{fi('Est. Closing Date', 'estimated_closing_date', 'date')}
+            </div></div>
+          <div><h3 className="text-sm font-semibold text-gray-700 uppercase mb-2">Seller</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">{fi('Name', 'seller_name', 'text', 'Jane Doe')}{fi('Email', 'seller_email', 'email', 'jane@email.com')}{fi('Phone', 'seller_phone', 'tel', '(806) 555-1234')}</div></div>
+          <div><h3 className="text-sm font-semibold text-gray-700 uppercase mb-2">Buyer</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">{fi('Name', 'buyer_name', 'text', 'John Smith')}{fi('Email', 'buyer_email', 'email', 'john@email.com')}{fi('Phone', 'buyer_phone', 'tel', '(806) 555-5678')}</div></div>
+          <div><h3 className="text-sm font-semibold text-gray-700 uppercase mb-2">Lender</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">{fi('Lender Name', 'lender_name', 'text', 'First National Bank')}{fi('Loan Officer', 'loan_officer_name', 'text', 'Mike Johnson')}{fi('Escrow Preference', 'escrow_officer_preference')}</div></div>
+          <div><label className="block text-xs text-gray-500 mb-1">Notes</label>
+            <textarea value={form.notes} onChange={e => upd('notes', e.target.value)} rows={2} placeholder="Any special instructions..." className="w-full px-3 py-2 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500" /></div>
+          {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2.5 text-sm text-gray-700 border rounded-lg hover:bg-gray-50">Cancel</button>
+            <button type="submit" disabled={submitting} className="px-6 py-2.5 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 shadow-md text-sm disabled:opacity-50">{submitting ? 'Submitting...' : 'Submit Title Order'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function ActionBar({ result, inputData, sheetType, onBack }: { result: any; inputData: any; sheetType: string; onBack: () => void }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<any>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [orderSubmitted, setOrderSubmitted] = useState<any>(null);
   const handleSave = async () => {
     setSaving(true);
     try { const res = await api.post('/saved_sheets/', { sheet_type: sheetType, property_address: inputData.property_address || '', client_name: inputData.client_name || '', county_id: inputData.county_id ? parseInt(inputData.county_id) : null, input_data: inputData, output_data: result }); setSaved(res.data); } catch (e: any) { console.error('Save error', e); }
@@ -71,7 +134,16 @@ function ActionBar({ result, inputData, sheetType, onBack }: { result: any; inpu
   };
   const handleShare = async () => {
     if (!saved?.id) return;
-    try { const res = await api.post(`/saved_sheets/${saved.id}/share`); const url = `${window.location.origin}/shared/${res.data.share_token}`; setShareUrl(url); navigator.clipboard.writeText(url); } catch (e) { console.error('Share error', e); }
+    try {
+      const res = await api.post(`/saved_sheets/${saved.id}/share`);
+      const url = `${window.location.origin}/shared/${res.data.share_token}`;
+      setShareUrl(url);
+      if (navigator.share) {
+        await navigator.share({ title: `${sheetType === 'seller' ? 'Seller Net Sheet' : 'Buyer Estimate'} - ${inputData.property_address || 'Property'}`, text: `View your ${sheetType === 'seller' ? 'seller net sheet' : 'buyer estimate'} from HUB City Title`, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+      }
+    } catch (e: any) { if (e.name !== 'AbortError') { try { if (shareUrl) await navigator.clipboard.writeText(shareUrl); } catch {} } }
   };
   const handlePdf = async () => {
     if (!saved?.id) return;
@@ -81,9 +153,29 @@ function ActionBar({ result, inputData, sheetType, onBack }: { result: any; inpu
   };
   return (
     <div className="mt-4 space-y-2">
-      {!saved ? (<button onClick={handleSave} disabled={saving} className="w-full py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-900">{saving ? 'Saving...' : '💾 Save Sheet'}</button>
-      ) : (<div className="grid grid-cols-2 gap-2"><button onClick={handleShare} className="py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">🔗 Share</button><button onClick={handlePdf} disabled={downloading} className="py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700">{downloading ? '...' : '📄 PDF'}</button></div>)}
-      {shareUrl && (<div className="w-full p-3 bg-blue-50 border border-blue-200 rounded-md"><p className="text-sm text-blue-800 font-medium">Share link copied!</p><a href={shareUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline break-all">{shareUrl}</a></div>)}
+      {!saved ? (<button onClick={handleSave} disabled={saving} className="w-full py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-900">{saving ? 'Saving...' : 'Save Sheet'}</button>
+      ) : (
+        <>
+          {!orderSubmitted ? (
+            <div className="grid grid-cols-3 gap-2">
+              <button onClick={handleShare} className="py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">Share</button>
+              <button onClick={handlePdf} disabled={downloading} className="py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700">{downloading ? '...' : 'PDF'}</button>
+              <button onClick={() => setShowOrderForm(true)} className="py-2 bg-amber-600 text-white rounded-md text-sm hover:bg-amber-700 font-semibold">Submit Order</button>
+            </div>
+          ) : (
+            <div className="p-3 bg-emerald-50 border-2 border-emerald-300 rounded-lg">
+              <p className="font-bold text-emerald-900 text-sm">Order #{orderSubmitted.id} Submitted!</p>
+              <p className="text-xs text-emerald-700">Check the Orders tab for updates.</p>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <button onClick={handleShare} className="py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">Share</button>
+                <button onClick={handlePdf} disabled={downloading} className="py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700">{downloading ? '...' : 'PDF'}</button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+      {shareUrl && (<div className="w-full p-3 bg-blue-50 border border-blue-200 rounded-md"><p className="text-sm text-blue-800 font-medium">{navigator.share ? 'Share sheet opened!' : 'Share link copied!'}</p><a href={shareUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline break-all">{shareUrl}</a></div>)}
+      {showOrderForm && saved && <OrderFormModal sheet={{ ...saved, input_data: inputData, output_data: result, sheet_type: sheetType }} onClose={() => setShowOrderForm(false)} onSuccess={(order) => { setShowOrderForm(false); setOrderSubmitted(order); }} />}
     </div>
   );
 }

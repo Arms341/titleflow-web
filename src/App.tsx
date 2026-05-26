@@ -26,6 +26,7 @@ import SavedSheetsExportPage from '@/pages/SavedSheetsExportPage';
 import CalculatorPage from '@/pages/CalculatorPage';
 import ProfilePage from '@/pages/ProfilePage';
 import AdminPage from '@/pages/AdminPage';
+import SharedSheetPage from '@/pages/SharedSheetPage';
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
       {/* Public — no auth required */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/shared/:token" element={<SharedSheetPage />} />
 
       {/* Protected (active account required) */}
       <Route
