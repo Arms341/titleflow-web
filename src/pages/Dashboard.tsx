@@ -73,7 +73,7 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-        <button onClick={() => navigate('/calculators')}
+        <button onClick={() => navigate('/calculators', { state: { openCalc: 'seller-net-sheet' } })}
           className="flex items-center gap-4 p-6 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md">
           <span className="text-4xl">🏠</span>
           <div className="text-left">
@@ -81,7 +81,7 @@ export default function Dashboard() {
             <p className="text-indigo-200 text-sm">Calculate seller net proceeds</p>
           </div>
         </button>
-        <button onClick={() => navigate('/calculators')}
+        <button onClick={() => navigate('/calculators', { state: { openCalc: 'buyer-estimate' } })}
           className="flex items-center gap-4 p-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md">
           <span className="text-4xl">🔑</span>
           <div className="text-left">

@@ -720,10 +720,11 @@ function BuyerCompensationForm({ onBack }: { onBack: () => void }) {
 // ── MAIN PAGE ──
 export default function CalculatorPage() {
   const location = useLocation();
-  const prefillState = location.state as { prefill?: any; sheetType?: string } | null;
+  const prefillState = location.state as { prefill?: any; sheetType?: string; openCalc?: string } | null;
   const [active, setActive] = useState<string | null>(
-    prefillState?.sheetType === 'seller' ? 'seller-net-sheet' :
-    prefillState?.sheetType === 'buyer' ? 'buyer-estimate' : null
+    prefillState?.openCalc ||
+    (prefillState?.sheetType === 'seller' ? 'seller-net-sheet' :
+    prefillState?.sheetType === 'buyer' ? 'buyer-estimate' : null)
   );
   const [prefill] = useState(prefillState?.prefill || null);
   const { data: counties } = useQuery({ queryKey: ['counties'], queryFn: () => api.get('/counties/').then(r => r.data) });
