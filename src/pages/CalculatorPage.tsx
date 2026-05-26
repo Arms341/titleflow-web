@@ -371,7 +371,7 @@ function SellerForm({ counties, onBack, prefill }: { counties: any[]; onBack: ()
 function BuyerForm({ counties, onBack, prefill }: { counties: any[]; onBack: () => void; prefill?: any }) {
   const { data: taxDistricts } = useQuery({ queryKey: ['tax-districts'], queryFn: () => api.get('/tax_districts/').then(r => r.data) });
   const districts = taxDistricts || [];
-  const defaults = { purchase_price: '350000', loan_amount: '280000', loan_type: 'conventional', interest_rate: '6.75', county_id: counties[0]?.id?.toString() || '1', closing_date: '2026-07-15', annual_property_taxes: '0', annual_homeowners_insurance: '1800', months_insurance_prepaid: '3', months_tax_escrow: '3', seller_paid_closing_costs: '0', property_address: '', client_name: '', tax_district_id: '' };
+  const defaults = { purchase_price: '350000', loan_amount: '280000', loan_type: 'conventional', interest_rate: '6.75', county_id: counties[0]?.id?.toString() || '1', closing_date: '2026-07-15', annual_property_taxes: '0', annual_homeowners_insurance: '2850', months_insurance_prepaid: '14', months_tax_escrow: '4', seller_paid_closing_costs: '0', property_address: '', client_name: '', tax_district_id: '', misc_lender_fees: '1100', appraisal_fee: '450', credit_report_fee: '40', survey_fee: '500', pest_inspection_fee: '100', home_inspection_fee: '400', escrow_fee: '250', doc_prep_buyer: '225', t19_endorsement: '80.99', survey_cover_endorsement: '99.15', t17_endorsement: '25', t36_endorsement: '25', t30_endorsement: '25' };
   const [f, sF] = useState(prefill ? { ...defaults, ...Object.fromEntries(Object.entries(prefill).filter(([_, v]) => v !== null && v !== undefined).map(([k, v]) => [k, String(v)])) } : defaults);
   const [result, setResult] = useState<any>(null); const [loading, setLoading] = useState(false); const [error, setError] = useState('');
   const s = (k: string, v: any) => {
@@ -388,7 +388,7 @@ function BuyerForm({ counties, onBack, prefill }: { counties: any[]; onBack: () 
     }
     sF(next);
   };
-  const calc = async () => { setLoading(true); setError(''); try { const res = await api.post('/calculators/buyer-estimate', { ...f, purchase_price: parseFloat(f.purchase_price), loan_amount: parseFloat(f.loan_amount), interest_rate: parseFloat(f.interest_rate), county_id: parseInt(f.county_id), annual_property_taxes: parseFloat(f.annual_property_taxes), annual_homeowners_insurance: parseFloat(f.annual_homeowners_insurance), months_insurance_prepaid: parseInt(f.months_insurance_prepaid), months_tax_escrow: parseInt(f.months_tax_escrow), seller_paid_closing_costs: parseFloat(f.seller_paid_closing_costs) }); setResult(res.data); } catch (e: any) { setError(e.response?.data?.detail || 'Calculation failed'); } setLoading(false); };
+  const calc = async () => { setLoading(true); setError(''); try { const res = await api.post('/calculators/buyer-estimate', { ...f, purchase_price: parseFloat(f.purchase_price), loan_amount: parseFloat(f.loan_amount), interest_rate: parseFloat(f.interest_rate), county_id: parseInt(f.county_id), annual_property_taxes: parseFloat(f.annual_property_taxes), annual_homeowners_insurance: parseFloat(f.annual_homeowners_insurance), months_insurance_prepaid: parseInt(f.months_insurance_prepaid), months_tax_escrow: parseInt(f.months_tax_escrow), seller_paid_closing_costs: parseFloat(f.seller_paid_closing_costs), misc_lender_fees: parseFloat(f.misc_lender_fees), appraisal_fee: parseFloat(f.appraisal_fee), credit_report_fee: parseFloat(f.credit_report_fee), survey_fee: parseFloat(f.survey_fee), pest_inspection_fee: parseFloat(f.pest_inspection_fee), home_inspection_fee: parseFloat(f.home_inspection_fee), escrow_fee: parseFloat(f.escrow_fee), doc_prep_buyer: parseFloat(f.doc_prep_buyer), t19_endorsement: parseFloat(f.t19_endorsement), survey_cover_endorsement: parseFloat(f.survey_cover_endorsement), t17_endorsement: parseFloat(f.t17_endorsement), t36_endorsement: parseFloat(f.t36_endorsement), t30_endorsement: parseFloat(f.t30_endorsement) }); setResult(res.data); } catch (e: any) { setError(e.response?.data?.detail || 'Calculation failed'); } setLoading(false); };
   return (
     <div className="mt-4"><Header icon="🔑" name="Buyer Estimate" desc="Estimate buyer closing costs" onBack={onBack} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -420,11 +420,64 @@ function BuyerForm({ counties, onBack, prefill }: { counties: any[]; onBack: () 
           </Field>
           <Field label="Annual Homeowners Insurance"><Inp value={f.annual_homeowners_insurance} onChange={(v: string) => s('annual_homeowners_insurance', v)} prefix="$" /></Field>
           <div className="grid grid-cols-2 gap-3"><Field label="Months Insurance Prepaid"><Inp value={f.months_insurance_prepaid} onChange={(v: string) => s('months_insurance_prepaid', v)} /></Field><Field label="Months Tax Escrow"><Inp value={f.months_tax_escrow} onChange={(v: string) => s('months_tax_escrow', v)} /></Field></div>
+          <Section title="Lender Fees" />
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Misc. Lender Fees"><Inp value={f.misc_lender_fees} onChange={(v: string) => s('misc_lender_fees', v)} prefix="$" /></Field>
+            <Field label="Appraisal"><Inp value={f.appraisal_fee} onChange={(v: string) => s('appraisal_fee', v)} prefix="$" /></Field>
+            <Field label="Credit Report"><Inp value={f.credit_report_fee} onChange={(v: string) => s('credit_report_fee', v)} prefix="$" /></Field>
+          </div>
+          <Section title="Inspections" />
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Survey"><Inp value={f.survey_fee} onChange={(v: string) => s('survey_fee', v)} prefix="$" /></Field>
+            <Field label="Pest Inspection"><Inp value={f.pest_inspection_fee} onChange={(v: string) => s('pest_inspection_fee', v)} prefix="$" /></Field>
+            <Field label="Home Inspection"><Inp value={f.home_inspection_fee} onChange={(v: string) => s('home_inspection_fee', v)} prefix="$" /></Field>
+          </div>
+          <Section title="Title Endorsements" />
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Escrow Fee"><Inp value={f.escrow_fee} onChange={(v: string) => s('escrow_fee', v)} prefix="$" /></Field>
+            <Field label="Doc Prep"><Inp value={f.doc_prep_buyer} onChange={(v: string) => s('doc_prep_buyer', v)} prefix="$" /></Field>
+            <Field label="T-19 Endorsement"><Inp value={f.t19_endorsement} onChange={(v: string) => s('t19_endorsement', v)} prefix="$" /></Field>
+            <Field label="Survey Cover"><Inp value={f.survey_cover_endorsement} onChange={(v: string) => s('survey_cover_endorsement', v)} prefix="$" /></Field>
+            <Field label="T-17 Mortgagee's"><Inp value={f.t17_endorsement} onChange={(v: string) => s('t17_endorsement', v)} prefix="$" /></Field>
+            <Field label="T-36 Mortgagee's"><Inp value={f.t36_endorsement} onChange={(v: string) => s('t36_endorsement', v)} prefix="$" /></Field>
+            <Field label="T-30 Mortgagee's"><Inp value={f.t30_endorsement} onChange={(v: string) => s('t30_endorsement', v)} prefix="$" /></Field>
+          </div>
           <Section title="Credits" />
           <Field label="Seller-Paid Closing Costs"><Inp value={f.seller_paid_closing_costs} onChange={(v: string) => s('seller_paid_closing_costs', v)} prefix="$" /></Field>
           <CalcBtn onClick={calc} loading={loading} label="Calculate Cash to Close" /><ErrMsg error={error} />
         </div>
-        <div>{result ? (<><ResultPanel result={result} title="Buyer Estimate Results" /><ActionBar result={result} inputData={f} sheetType="buyer" onBack={() => setResult(null)} /></>) : <Placeholder />}</div>
+        <div>{result ? (<>
+          {/* Monthly Payment donut */}
+          {result.monthly_payment && (
+            <div className="bg-gray-50 p-6 rounded-lg border mb-4">
+              <h3 className="font-semibold text-gray-700 mb-4">Monthly Payment</h3>
+              <div className="relative">
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart><Pie data={[
+                    { name: 'P&I', value: parseFloat(result.monthly_pi || 0), color: '#3b82f6' },
+                    { name: 'Taxes', value: parseFloat(result.monthly_taxes || 0), color: '#10b981' },
+                    { name: 'Insurance', value: parseFloat(result.monthly_insurance || 0), color: '#f59e0b' },
+                    ...(result.monthly_pmi ? [{ name: 'PMI', value: parseFloat(result.monthly_pmi), color: '#ef4444' }] : []),
+                  ].filter(d => d.value > 0)} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={2} dataKey="value" stroke="none">
+                    {[{ color: '#3b82f6' }, { color: '#10b981' }, { color: '#f59e0b' }, { color: '#ef4444' }].map((d, i) => <Cell key={i} fill={d.color} />)}
+                  </Pie></PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <p className="text-xs text-gray-500">MONTHLY</p>
+                  <p className="text-xl font-bold text-gray-900">{fmt(result.monthly_payment)}</p>
+                </div>
+              </div>
+              <div className="space-y-1 mt-2">
+                <div className="flex items-center justify-between text-sm"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-blue-500" /><span>P&I</span></div><span className="font-medium">{fmt(result.monthly_pi)}</span></div>
+                <div className="flex items-center justify-between text-sm"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-emerald-500" /><span>Taxes</span></div><span className="font-medium">{fmt(result.monthly_taxes)}</span></div>
+                <div className="flex items-center justify-between text-sm"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-amber-500" /><span>Insurance</span></div><span className="font-medium">{fmt(result.monthly_insurance)}</span></div>
+                {result.monthly_pmi && <div className="flex items-center justify-between text-sm"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-red-500" /><span>PMI</span></div><span className="font-medium">{fmt(result.monthly_pmi)}</span></div>}
+              </div>
+            </div>
+          )}
+          <ResultPanel result={result} title="Buyer Estimate Results" />
+          <ActionBar result={result} inputData={f} sheetType="buyer" onBack={() => setResult(null)} />
+        </>) : <Placeholder />}</div>
       </div>
     </div>
   );
