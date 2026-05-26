@@ -120,8 +120,8 @@ export default function Dashboard() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {sheetList.slice(0, 10).map((sheet: any) => (
-                  <tr key={sheet.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm text-gray-900">{sheet.property_address || 'No address'}</td>
+                  <tr key={sheet.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate('/saved-sheets', { state: { viewSheet: sheet } })}>
+                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">{sheet.property_address || 'No address'}</td>
                     <td className="px-6 py-4 text-sm">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         sheet.sheet_type === 'seller' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
