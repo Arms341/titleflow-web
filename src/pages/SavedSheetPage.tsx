@@ -7,6 +7,8 @@ const fmt = (v: any) => { if (v == null) return '-'; const n = typeof v === 'str
 function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState<any>(null);
   const out = sheet.output_data || {};
   const inp = sheet.input_data || {};
 
@@ -30,9 +32,28 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
     setDownloading(false);
   };
 
+  const handleSubmitOrder = async () => {
+    if (!confirm('Submit this net sheet as a title order to HUB City Title?')) return;
+    setSubmitting(true);
+    try {
+      const res = await api.post('/orders/', {
+        saved_sheet_id: sheet.id,
+        order_type: 'purchase',
+        property_address: sheet.property_address || inp.property_address || '',
+        seller_name: sheet.sheet_type === 'seller' ? (sheet.client_name || inp.client_name || '') : '',
+        buyer_name: sheet.sheet_type === 'buyer' ? (sheet.client_name || inp.client_name || '') : '',
+        estimated_closing_date: inp.closing_date || null,
+        notes: `Submitted from ${sheet.sheet_type === 'seller' ? 'Seller Net Sheet' : 'Buyer Estimate'} — Net: ${out.net_proceeds ? fmt(out.net_proceeds) : out.cash_to_close ? fmt(out.cash_to_close) : 'N/A'}`,
+        status: 'pending',
+      });
+      setSubmitted(res.data);
+    } catch (e: any) { alert('Submit failed: ' + (e.response?.data?.detail || e.message)); }
+    setSubmitting(false);
+  };
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <button onClick={onBack} className="text-sm text-indigo-600 hover:text-indigo-800 mb-4">← Back to My Sheets</button>
+      <button onClick={onBack} className="text-sm text-indigo-600 hover:text-indigo-800 mb-4">&larr; Back to My Sheets</button>
 
       <div className="bg-white rounded-lg shadow border p-6">
         <div className="flex justify-between items-start mb-6">
@@ -41,7 +62,7 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
               {sheet.sheet_type === 'seller' ? 'Seller Net Sheet' : 'Buyer Estimate'}
             </span>
             <h2 className="text-xl font-bold text-gray-900 mt-2">{sheet.property_address || 'No address'}</h2>
-            <p className="text-gray-500 text-sm">{sheet.client_name || 'No client name'} • {sheet.created_at ? new Date(sheet.created_at).toLocaleDateString() : ''}</p>
+            <p className="text-gray-500 text-sm">{sheet.client_name || 'No client name'} &bull; {sheet.created_at ? new Date(sheet.created_at).toLocaleDateString() : ''}</p>
           </div>
           <div className="text-right">
             {out.net_proceeds != null && (
@@ -53,7 +74,6 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
           </div>
         </div>
 
-        {/* Line items */}
         {out.line_items?.length > 0 && (
           <div className="mb-6">
             <h3 className="font-semibold text-gray-700 text-sm uppercase mb-2">Breakdown</h3>
@@ -68,7 +88,6 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
           </div>
         )}
 
-        {/* Summary */}
         <div className="bg-gray-50 rounded-lg border p-4 space-y-2 mb-6">
           <h3 className="font-semibold text-gray-700 text-sm uppercase mb-2">Summary</h3>
           {out.sale_price != null && <div className="flex justify-between text-sm"><span>Sale Price</span><span className="font-semibold">{fmt(out.sale_price)}</span></div>}
@@ -79,7 +98,6 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
           {out.cash_to_close != null && <div className="flex justify-between text-lg font-bold pt-2 border-t"><span>Cash to Close</span><span className="text-blue-600">{fmt(out.cash_to_close)}</span></div>}
         </div>
 
-        {/* Input summary */}
         {Object.keys(inp).length > 0 && (
           <details className="mb-6">
             <summary className="cursor-pointer text-sm font-semibold text-gray-500 hover:text-gray-700">View Input Parameters</summary>
@@ -94,13 +112,40 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
           </details>
         )}
 
-        {/* Actions */}
+        {/* Submit to Title Company */}
+        {!submitted ? (
+          <div className="mb-6 p-4 bg-amber-50 border-2 border-amber-300 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-amber-900">Ready to open a title order?</h3>
+                <p className="text-sm text-amber-700">Submit this sheet to HUB City Title for processing</p>
+              </div>
+              <button onClick={handleSubmitOrder} disabled={submitting}
+                className="px-6 py-3 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 shadow-md text-sm whitespace-nowrap">
+                {submitting ? 'Submitting...' : '📋 Submit Title Order'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6 p-4 bg-emerald-50 border-2 border-emerald-300 rounded-lg">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">✅</span>
+              <div>
+                <h3 className="font-bold text-emerald-900">Title Order Submitted!</h3>
+                <p className="text-sm text-emerald-700">Order #{submitted.id} — Status: {submitted.status || 'pending'}</p>
+                <p className="text-xs text-emerald-600 mt-1">HUB City Title will process your order. Check the Orders tab for updates.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Share / PDF / Email buttons */}
         <div className="flex flex-wrap gap-3">
           <button onClick={handleShare} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm">🔗 Share with Client</button>
           <button onClick={handlePdf} disabled={downloading} className="flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm">
             {downloading ? 'Generating...' : '📄 Download PDF'}
           </button>
-          <button onClick={() => { const mailto = `mailto:?subject=Net Sheet - ${sheet.property_address || 'Property'}&body=View your net sheet here: ${shareUrl || 'Please generate a share link first'}`; window.open(mailto); }}
+          <button onClick={() => { const mailto = `mailto:?subject=Net Sheet - ${sheet.property_address || 'Property'}&body=View your net sheet here: ${shareUrl || 'Please click Share first to generate a link'}`; window.open(mailto); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium text-sm">✉️ Email to Client</button>
         </div>
 
