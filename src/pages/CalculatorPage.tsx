@@ -198,9 +198,25 @@ function ResultPanel({ result, title }: { result: any; title: string }) {
 
 // ── 1. SELLER NET SHEET ──
 function SellerForm({ counties, onBack }: { counties: any[]; onBack: () => void }) {
-  const [f, sF] = useState({ sale_price: '350000', existing_loan_balance: '150000', seller_agent_commission_pct: '3.0', buyer_agent_commission_pct: '3.0', county_id: counties[0]?.id?.toString() || '1', closing_date: '2026-07-15', prior_title_insurance: false, years_since_prior_policy: '0', hoa_payoff: '0', seller_concessions: '0', include_home_warranty: true, include_survey: false, miscellaneous_fees: '0', annual_property_taxes: '2930', property_address: '', client_name: '' });
+  const { data: taxDistricts } = useQuery({ queryKey: ['tax-districts'], queryFn: () => api.get('/tax_districts/').then(r => r.data) });
+  const districts = taxDistricts || [];
+  const [f, sF] = useState({ sale_price: '350000', existing_loan_balance: '150000', seller_agent_commission_pct: '3.0', buyer_agent_commission_pct: '3.0', county_id: counties[0]?.id?.toString() || '1', closing_date: '2026-07-15', prior_title_insurance: false, years_since_prior_policy: '0', hoa_payoff: '0', seller_concessions: '0', include_home_warranty: true, include_survey: false, miscellaneous_fees: '0', annual_property_taxes: '0', property_address: '', client_name: '', tax_district_id: '' });
   const [result, setResult] = useState<any>(null); const [loading, setLoading] = useState(false); const [error, setError] = useState('');
-  const s = (k: string, v: any) => sF(p => ({ ...p, [k]: v }));
+  const s = (k: string, v: any) => {
+    const next = { ...f, [k]: v };
+    // Auto-calc taxes when district or sale price changes
+    if (k === 'tax_district_id' || k === 'sale_price') {
+      const distId = k === 'tax_district_id' ? v : next.tax_district_id;
+      const price = k === 'sale_price' ? parseFloat(v) : parseFloat(next.sale_price);
+      if (distId && distId !== 'custom') {
+        const dist = districts.find((d: any) => d.id.toString() === distId.toString());
+        if (dist && !isNaN(price)) {
+          next.annual_property_taxes = (price * parseFloat(dist.combined_rate_pct) / 100).toFixed(2);
+        }
+      }
+    }
+    sF(next);
+  };
   const calc = async () => { setLoading(true); setError(''); try { const res = await api.post('/calculators/seller-net-sheet', { ...f, sale_price: parseFloat(f.sale_price), existing_loan_balance: parseFloat(f.existing_loan_balance), seller_agent_commission_pct: parseFloat(f.seller_agent_commission_pct), buyer_agent_commission_pct: parseFloat(f.buyer_agent_commission_pct), county_id: parseInt(f.county_id), hoa_payoff: parseFloat(f.hoa_payoff), seller_concessions: parseFloat(f.seller_concessions), miscellaneous_fees: parseFloat(f.miscellaneous_fees), annual_property_taxes: parseFloat(f.annual_property_taxes), years_since_prior_policy: f.prior_title_insurance ? parseInt(f.years_since_prior_policy) : null }); setResult(res.data); } catch (e: any) { setError(e.response?.data?.detail || 'Calculation failed'); } setLoading(false); };
   return (
     <div className="mt-4"><Header icon="🏠" name="Seller Net Sheet" desc="Calculate estimated net proceeds for seller" onBack={onBack} />
@@ -217,7 +233,20 @@ function SellerForm({ counties, onBack }: { counties: any[]; onBack: () => void 
           <Section title="Commissions" />
           <div className="grid grid-cols-2 gap-3"><Field label="Seller Agent"><Inp value={f.seller_agent_commission_pct} onChange={(v: string) => s('seller_agent_commission_pct', v)} suffix="%" /></Field><Field label="Buyer Agent"><Inp value={f.buyer_agent_commission_pct} onChange={(v: string) => s('buyer_agent_commission_pct', v)} suffix="%" /></Field></div>
           <Section title="Tax & Options" />
-          <Field label="Annual Property Taxes"><Inp value={f.annual_property_taxes} onChange={(v: string) => s('annual_property_taxes', v)} prefix="$" /></Field>
+          <Field label="Tax District">
+            <select value={f.tax_district_id} onChange={e => s('tax_district_id', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+              <option value="custom">Custom (enter manually)</option>
+              {districts.map((d: any) => <option key={d.id} value={d.id}>{d.name} — {parseFloat(d.combined_rate_pct).toFixed(2)}%</option>)}
+            </select>
+          </Field>
+          <Field label="Annual Property Taxes">
+            <div className="relative">
+              <Inp value={f.annual_property_taxes} onChange={(v: string) => { sF(p => ({ ...p, annual_property_taxes: v, tax_district_id: 'custom' })); }} prefix="$" />
+              {f.tax_district_id && f.tax_district_id !== 'custom' && (
+                <span className="absolute right-3 top-2 text-xs text-emerald-600 font-medium">auto</span>
+              )}
+            </div>
+          </Field>
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.include_home_warranty} onChange={e => s('include_home_warranty', e.target.checked)} /> Include Home Warranty</label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.include_survey} onChange={e => s('include_survey', e.target.checked)} /> Include Survey</label>
@@ -236,9 +265,24 @@ function SellerForm({ counties, onBack }: { counties: any[]; onBack: () => void 
 
 // ── 2. BUYER ESTIMATE ──
 function BuyerForm({ counties, onBack }: { counties: any[]; onBack: () => void }) {
-  const [f, sF] = useState({ purchase_price: '350000', loan_amount: '280000', loan_type: 'conventional', interest_rate: '6.75', county_id: counties[0]?.id?.toString() || '1', closing_date: '2026-07-15', annual_property_taxes: '2930', annual_homeowners_insurance: '1800', months_insurance_prepaid: '3', months_tax_escrow: '3', seller_paid_closing_costs: '0', property_address: '', client_name: '' });
+  const { data: taxDistricts } = useQuery({ queryKey: ['tax-districts'], queryFn: () => api.get('/tax_districts/').then(r => r.data) });
+  const districts = taxDistricts || [];
+  const [f, sF] = useState({ purchase_price: '350000', loan_amount: '280000', loan_type: 'conventional', interest_rate: '6.75', county_id: counties[0]?.id?.toString() || '1', closing_date: '2026-07-15', annual_property_taxes: '0', annual_homeowners_insurance: '1800', months_insurance_prepaid: '3', months_tax_escrow: '3', seller_paid_closing_costs: '0', property_address: '', client_name: '', tax_district_id: '' });
   const [result, setResult] = useState<any>(null); const [loading, setLoading] = useState(false); const [error, setError] = useState('');
-  const s = (k: string, v: any) => sF(p => ({ ...p, [k]: v }));
+  const s = (k: string, v: any) => {
+    const next = { ...f, [k]: v };
+    if (k === 'tax_district_id' || k === 'purchase_price') {
+      const distId = k === 'tax_district_id' ? v : next.tax_district_id;
+      const price = k === 'purchase_price' ? parseFloat(v) : parseFloat(next.purchase_price);
+      if (distId && distId !== 'custom') {
+        const dist = districts.find((d: any) => d.id.toString() === distId.toString());
+        if (dist && !isNaN(price)) {
+          next.annual_property_taxes = (price * parseFloat(dist.combined_rate_pct) / 100).toFixed(2);
+        }
+      }
+    }
+    sF(next);
+  };
   const calc = async () => { setLoading(true); setError(''); try { const res = await api.post('/calculators/buyer-estimate', { ...f, purchase_price: parseFloat(f.purchase_price), loan_amount: parseFloat(f.loan_amount), interest_rate: parseFloat(f.interest_rate), county_id: parseInt(f.county_id), annual_property_taxes: parseFloat(f.annual_property_taxes), annual_homeowners_insurance: parseFloat(f.annual_homeowners_insurance), months_insurance_prepaid: parseInt(f.months_insurance_prepaid), months_tax_escrow: parseInt(f.months_tax_escrow), seller_paid_closing_costs: parseFloat(f.seller_paid_closing_costs) }); setResult(res.data); } catch (e: any) { setError(e.response?.data?.detail || 'Calculation failed'); } setLoading(false); };
   return (
     <div className="mt-4"><Header icon="🔑" name="Buyer Estimate" desc="Estimate buyer closing costs" onBack={onBack} />
@@ -255,7 +299,20 @@ function BuyerForm({ counties, onBack }: { counties: any[]; onBack: () => void }
           <Field label="Loan Type"><select value={f.loan_type} onChange={e => s('loan_type', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"><option value="conventional">Conventional</option><option value="fha">FHA</option><option value="va">VA</option><option value="usda">USDA</option></select></Field>
           <Field label="Interest Rate"><Inp value={f.interest_rate} onChange={(v: string) => s('interest_rate', v)} suffix="%" /></Field>
           <Section title="Tax & Insurance" />
-          <Field label="Annual Property Taxes"><Inp value={f.annual_property_taxes} onChange={(v: string) => s('annual_property_taxes', v)} prefix="$" /></Field>
+          <Field label="Tax District">
+            <select value={f.tax_district_id} onChange={e => s('tax_district_id', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+              <option value="custom">Custom (enter manually)</option>
+              {districts.map((d: any) => <option key={d.id} value={d.id}>{d.name} — {parseFloat(d.combined_rate_pct).toFixed(2)}%</option>)}
+            </select>
+          </Field>
+          <Field label="Annual Property Taxes">
+            <div className="relative">
+              <Inp value={f.annual_property_taxes} onChange={(v: string) => { sF(p => ({ ...p, annual_property_taxes: v, tax_district_id: 'custom' })); }} prefix="$" />
+              {f.tax_district_id && f.tax_district_id !== 'custom' && (
+                <span className="absolute right-3 top-2 text-xs text-emerald-600 font-medium">auto</span>
+              )}
+            </div>
+          </Field>
           <Field label="Annual Homeowners Insurance"><Inp value={f.annual_homeowners_insurance} onChange={(v: string) => s('annual_homeowners_insurance', v)} prefix="$" /></Field>
           <div className="grid grid-cols-2 gap-3"><Field label="Months Insurance Prepaid"><Inp value={f.months_insurance_prepaid} onChange={(v: string) => s('months_insurance_prepaid', v)} /></Field><Field label="Months Tax Escrow"><Inp value={f.months_tax_escrow} onChange={(v: string) => s('months_tax_escrow', v)} /></Field></div>
           <Section title="Credits" />
