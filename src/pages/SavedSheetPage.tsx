@@ -1,9 +1,112 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const fmt = (v: any) => { if (v == null) return '-'; const n = typeof v === 'string' ? parseFloat(v) : v; if (isNaN(n)) return '-'; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n); };
+
+// -- Full-screen signature pad for in-person signing --
+function FullScreenSignature({ sheet, onClose, onSigned }: { sheet: any; onClose: () => void; onSigned: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [drawing, setDrawing] = useState(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
+  const [signerName, setSignerName] = useState(sheet.client_name || '');
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }, []);
+
+  const getPos = (e: React.MouseEvent | React.TouchEvent) => {
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+    if ('touches' in e) return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    return { x: (e as React.MouseEvent).clientX - rect.left, y: (e as React.MouseEvent).clientY - rect.top };
+  };
+  const start = (e: React.MouseEvent | React.TouchEvent) => { e.preventDefault(); const ctx = canvasRef.current?.getContext('2d'); if (!ctx) return; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); setDrawing(true); setHasDrawn(true); };
+  const draw = (e: React.MouseEvent | React.TouchEvent) => { if (!drawing) return; e.preventDefault(); const ctx = canvasRef.current?.getContext('2d'); if (!ctx) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+  const stop = () => setDrawing(false);
+  const clear = () => { const c = canvasRef.current; if (!c) return; c.getContext('2d')?.clearRect(0, 0, c.width, c.height); setHasDrawn(false); };
+
+  const submit = async () => {
+    if (!canvasRef.current || !hasDrawn) return;
+    setSubmitting(true);
+    try {
+      await api.post(`/saved_sheets/${sheet.id}/sign`, { signature: canvasRef.current.toDataURL('image/png'), signer_name: signerName });
+      setDone(true);
+      setTimeout(() => { onSigned(); onClose(); }, 2000);
+    } catch (e: any) { alert(e.response?.data?.detail || 'Signature failed'); }
+    setSubmitting(false);
+  };
+
+  if (done) {
+    return (
+      <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center">
+        <div className="text-6xl mb-4">&#9989;</div>
+        <h2 className="text-2xl font-bold text-emerald-800">Signed Successfully</h2>
+        <p className="text-gray-500 mt-2">Thank you, {signerName || 'Client'}!</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-white flex flex-col">
+      {/* Header */}
+      <div className="bg-slate-800 text-white px-6 py-4 flex items-center justify-between shrink-0">
+        <div>
+          <h2 className="text-lg font-bold">Client Signature</h2>
+          <p className="text-sm text-slate-300">{sheet.property_address || 'Net Sheet'}</p>
+        </div>
+        <button onClick={onClose} className="text-slate-300 hover:text-white text-2xl px-2">&times;</button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-4 max-w-lg mx-auto w-full">
+        <p className="text-gray-600 text-center mb-4">
+          By signing below, I acknowledge that I have reviewed the {sheet.sheet_type === 'seller' ? 'seller net sheet' : 'buyer estimate'} and understand that figures shown are estimates.
+        </p>
+
+        {/* Name */}
+        <div className="w-full mb-4">
+          <label className="block text-sm text-gray-500 mb-1">Your Name</label>
+          <input type="text" value={signerName} onChange={e => setSignerName(e.target.value)}
+            placeholder="Full Name" className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+        </div>
+
+        {/* Canvas */}
+        <div className="w-full border-2 border-gray-300 rounded-lg bg-gray-50 relative mb-4" style={{ touchAction: 'none' }}>
+          <canvas ref={canvasRef} className="w-full cursor-crosshair" style={{ height: '200px' }}
+            onMouseDown={start} onMouseMove={draw} onMouseUp={stop} onMouseLeave={stop}
+            onTouchStart={start} onTouchMove={draw} onTouchEnd={stop} />
+          <div className="absolute bottom-3 left-4 right-4 border-b border-gray-400" />
+          <span className="absolute bottom-1 left-4 text-xs text-gray-400">Sign here</span>
+        </div>
+
+        {/* Buttons */}
+        <div className="w-full flex gap-3">
+          <button onClick={clear} className="flex-1 py-3 text-gray-700 border-2 border-gray-300 rounded-lg text-base font-medium hover:bg-gray-50">Clear</button>
+          <button onClick={submit} disabled={!hasDrawn || submitting}
+            className="flex-[2] py-3 bg-emerald-600 text-white rounded-lg text-base font-bold hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            {submitting ? 'Saving...' : 'Confirm Signature'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // -- Order Submission Form Modal --
 function OrderFormModal({ sheet, onClose, onSuccess }: { sheet: any; onClose: () => void; onSuccess: (order: any) => void }) {
@@ -198,6 +301,8 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
   const [downloading, setDownloading] = useState(false);
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [submitted, setSubmitted] = useState<any>(null);
+  const [showSignature, setShowSignature] = useState(false);
+  const [isSigned, setIsSigned] = useState(!!sheet.client_signature || !!sheet.signed_at);
   const out = sheet.output_data || {};
   const inp = sheet.input_data || {};
 
@@ -314,7 +419,7 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
           </div>
         )}
 
-        {/* Share / PDF / Email / Edit buttons */}
+        {/* Share / PDF / Email / Edit / Sign buttons */}
         <div className="flex flex-wrap gap-3">
           <button onClick={() => navigate('/calculators', { state: { prefill: sheet.input_data, sheetType: sheet.sheet_type } })}
             className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm">Edit & Recalculate</button>
@@ -324,6 +429,12 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
           </button>
           <button onClick={() => { const mailto = `mailto:?subject=Net Sheet - ${sheet.property_address || 'Property'}&body=View your net sheet here: ${shareUrl || 'Please click Share first to generate a link'}`; window.open(mailto); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium text-sm">Email to Client</button>
+          {!isSigned ? (
+            <button onClick={() => setShowSignature(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium text-sm">Get Signature</button>
+          ) : (
+            <span className="flex items-center gap-2 px-4 py-2.5 bg-emerald-100 text-emerald-800 rounded-lg text-sm font-medium">Signed &#10003;</span>
+          )}
         </div>
 
         {shareUrl && (
@@ -342,6 +453,15 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
           onSuccess={(order) => { setShowOrderForm(false); setSubmitted(order); }}
         />
       )}
+
+      {/* Full-screen signature pad */}
+      {showSignature && (
+        <FullScreenSignature
+          sheet={sheet}
+          onClose={() => setShowSignature(false)}
+          onSigned={() => setIsSigned(true)}
+        />
+      )}
     </div>
   );
 }
@@ -349,7 +469,10 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
 // -- Saved Sheets List --
 export default function SavedSheetPage() {
   const queryClient = useQueryClient();
-  const [viewing, setViewing] = useState<any>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const incomingSheet = (location.state as any)?.viewSheet || null;
+  const [viewing, setViewing] = useState<any>(incomingSheet);
 
   const { data: sheets, isLoading } = useQuery({
     queryKey: ['saved-sheets'],
@@ -407,6 +530,7 @@ export default function SavedSheetPage() {
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <div className="flex gap-1">
                         <button onClick={() => setViewing(s)} className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200" title="View">View</button>
+                        <button onClick={() => navigate('/calculators', { state: { prefill: s.input_data, sheetType: s.sheet_type } })} className="px-2 py-1 text-xs bg-amber-100 text-amber-700 rounded hover:bg-amber-200" title="Edit">Edit</button>
                         <button onClick={() => { if (confirm('Delete this sheet?')) deleteMutation.mutate(s.id); }} className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200" title="Delete">Delete</button>
                       </div>
                     </td>
