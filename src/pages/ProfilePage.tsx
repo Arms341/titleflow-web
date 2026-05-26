@@ -1,7 +1,7 @@
 // ProfilePage.tsx v1.0.0
 // Agent profile editor — edit name, phone, brokerage, license, avatar URL.
 // Calls PUT /auth/profile to persist changes.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -113,15 +113,38 @@ export default function ProfilePage() {
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
           </div>
 
-          {/* Avatar URL */}
+          {/* Avatar Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <Camera size={14} className="inline mr-1.5 mb-0.5" />Headshot URL
+              <Camera size={14} className="inline mr-1.5 mb-0.5" />Headshot Photo
             </label>
-            <input type="url" value={form.avatar_url} onChange={e => update('avatar_url', e.target.value)}
-              placeholder="https://example.com/my-photo.jpg"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
-            <p className="text-xs text-gray-400 mt-1">Paste a link to your headshot photo. It will appear on PDFs sent to clients.</p>
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
+                {form.avatar_url ? (
+                  <img src={form.avatar_url} alt="Preview" className="w-full h-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                ) : (
+                  <UserIcon size={24} className="text-gray-400" />
+                )}
+              </div>
+              <div className="flex-1">
+                <input type="file" accept="image/*" className="hidden" id="avatar-upload"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 2 * 1024 * 1024) { alert('Photo must be under 2MB'); return; }
+                    const reader = new FileReader();
+                    reader.onload = () => { update('avatar_url', reader.result as string); };
+                    reader.readAsDataURL(file);
+                  }} />
+                <label htmlFor="avatar-upload"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 cursor-pointer text-sm font-medium">
+                  <Camera size={16} />
+                  {form.avatar_url ? 'Change Photo' : 'Upload Photo'}
+                </label>
+                <p className="text-xs text-gray-400 mt-1">JPG or PNG, max 2MB. Appears on PDFs sent to clients.</p>
+              </div>
+            </div>
           </div>
 
           {/* Submit */}
