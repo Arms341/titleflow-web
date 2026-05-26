@@ -435,6 +435,7 @@ function TruValueForm({ counties, onBack }: { counties: any[]; onBack: () => voi
           ))}
         </div>
       )}
+      {result && <ActionBar result={result} inputData={f} sheetType="truvalue" onBack={() => setResult(null)} />}
     </div>
   );
 }
@@ -463,7 +464,9 @@ function SellVsRentForm({ onBack }: { onBack: () => void }) {
           <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-1">Year</th><th className="text-right">If Sell</th><th className="text-right">If Rent</th><th className="text-right">Diff</th></tr></thead><tbody>
             {result.projection?.map((y: any) => (<tr key={y.year} className="border-b"><td className="py-1">{y.year}</td><td className="text-right">{fmt(y.equity_if_sell)}</td><td className="text-right">{fmt(y.net_if_rent)}</td><td className={`text-right font-medium ${parseFloat(y.difference) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{fmt(y.difference)}</td></tr>))}
           </tbody></table>
-        </div>) : <Placeholder />}</div>
+        </div>) : <Placeholder />}
+        {result && <ActionBar result={result} inputData={f} sheetType="sell-vs-rent" onBack={() => setResult(null)} />}
+        </div>
       </div>
     </div>
   );
@@ -492,7 +495,9 @@ function HoldingCostForm({ onBack }: { onBack: () => void }) {
           <div className="text-center mb-4 p-4 bg-white rounded-lg border"><p className="text-xs text-gray-500 uppercase">Monthly Cost</p><p className="text-3xl font-bold text-orange-600">{fmt(result.monthly_cost)}</p></div>
           <div className="text-center mb-4 p-4 bg-white rounded-lg border"><p className="text-xs text-gray-500 uppercase">Total ({f.months_holding} months)</p><p className="text-3xl font-bold text-red-600">{fmt(result.total_cost)}</p></div>
           {result.line_items?.map((item: any, i: number) => (<div key={i} className="flex justify-between text-sm py-1.5 border-b"><span>{item.label}</span><span className="font-medium">{fmt(item.amount)}</span></div>))}
-        </div>) : <Placeholder />}</div>
+        </div>) : <Placeholder />}
+        {result && <ActionBar result={result} inputData={f} sheetType="holding-cost" onBack={() => setResult(null)} />}
+        </div>
       </div>
     </div>
   );
@@ -521,7 +526,9 @@ function BuydownForm({ onBack }: { onBack: () => void }) {
           <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-1">Year</th><th className="text-right">Rate</th><th className="text-right">Payment</th><th className="text-right">Savings/mo</th></tr></thead><tbody>
             {result.schedule?.map((y: any) => (<tr key={y.year} className="border-b"><td className="py-1">{y.year}</td><td className="text-right">{pct(y.rate)}</td><td className="text-right">{fmt(y.payment)}</td><td className="text-right text-emerald-600">{fmt(y.monthly_savings)}</td></tr>))}
           </tbody></table>
-        </div>) : <Placeholder />}</div>
+        </div>) : <Placeholder />}
+        {result && <ActionBar result={result} inputData={f} sheetType="buydown" onBack={() => setResult(null)} />}
+        </div>
       </div>
     </div>
   );
@@ -554,7 +561,9 @@ function ExtraPaymentForm({ onBack }: { onBack: () => void }) {
             <div className="p-3 bg-white rounded border"><p className="text-xs text-gray-500">Standard</p><p className="font-semibold">{result.standard?.months ? Math.round(result.standard.months / 12) + ' yrs' : '-'}</p><p className="text-xs text-gray-400">Interest: {fmt(result.standard?.total_interest)}</p></div>
             <div className="p-3 bg-white rounded border"><p className="text-xs text-gray-500">Accelerated</p><p className="font-semibold text-emerald-600">{result.accelerated?.months ? Math.round(result.accelerated.months / 12) + ' yrs' : '-'}</p><p className="text-xs text-gray-400">Interest: {fmt(result.accelerated?.total_interest)}</p></div>
           </div>
-        </div>) : <Placeholder />}</div>
+        </div>) : <Placeholder />}
+        {result && <ActionBar result={result} inputData={f} sheetType="extra-payment" onBack={() => setResult(null)} />}
+        </div>
       </div>
     </div>
   );
@@ -582,7 +591,9 @@ function BuyNowForm({ onBack }: { onBack: () => void }) {
           {result.current_scenario && (<div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded"><p className="text-xs text-emerald-700 uppercase font-semibold">Buy Now</p><p className="text-lg font-bold">{fmt(result.current_scenario.price)} at {pct(result.current_scenario.rate)}</p><p className="text-sm text-gray-600">Monthly: {fmt(result.current_scenario.monthly_payment)}</p></div>)}
           {result.future_scenarios?.map((sc: any, i: number) => (<div key={i} className="mb-3 p-4 bg-red-50 border border-red-200 rounded"><p className="text-xs text-red-700 uppercase font-semibold">Wait {sc.months_waited} months</p><p className="text-lg font-bold">{fmt(sc.price)} at {pct(sc.rate)}</p><p className="text-sm text-gray-600">Monthly: {fmt(sc.monthly_payment)} (+{fmt(sc.payment_increase)}/mo)</p><p className="text-sm text-red-600 font-semibold">Cost of waiting: {fmt(sc.total_cost_of_waiting)}</p></div>))}
           {result.recommendation && <p className="text-sm mt-3 p-3 bg-blue-50 border border-blue-200 rounded">{result.recommendation}</p>}
-        </div>) : <Placeholder />}</div>
+        </div>) : <Placeholder />}
+        {result && <ActionBar result={result} inputData={f} sheetType="buy-now-vs-later" onBack={() => setResult(null)} />}
+        </div>
       </div>
     </div>
   );
@@ -608,6 +619,7 @@ function PriceVsRateForm({ onBack }: { onBack: () => void }) {
           {result.matrix.map((cell: any, i: number) => (<tr key={i} className="border-b"><td className="p-2 border">{fmt(cell.price)}</td><td className="p-2 border text-center">{pct(cell.rate)}</td><td className="p-2 border text-center font-medium">{fmt(cell.monthly_payment)}</td><td className={`p-2 border text-center ${parseFloat(cell.payment_delta) > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{parseFloat(cell.payment_delta) > 0 ? '+' : ''}{fmt(cell.payment_delta)}</td></tr>))}
         </tbody></table>
       </div>)}
+      {result && <ActionBar result={result} inputData={f} sheetType="price-vs-rate" onBack={() => setResult(null)} />}
     </div>
   );
 }
@@ -661,6 +673,7 @@ function ScenarioCompareForm({ counties, onBack }: { counties: any[]; onBack: ()
           <p className="text-sm text-gray-600 mt-1">{result.recommendation}</p>
         </div>
       </div>)}
+      {result && <ActionBar result={result} inputData={f} sheetType="scenario-compare" onBack={() => setResult(null)} />}
     </div>
   );
 }
@@ -696,7 +709,9 @@ function BuyerCompensationForm({ onBack }: { onBack: () => void }) {
           {result.monthly_payment_impact && parseFloat(result.monthly_payment_impact) > 0 && <p className="text-sm text-gray-600">Monthly payment impact: +{fmt(result.monthly_payment_impact)}/mo</p>}
           {result.scenarios?.map((sc: any, i: number) => (<div key={i} className="mt-2 p-3 bg-white rounded border"><p className="font-medium text-sm">{sc.structure}</p><p className="text-xs text-gray-500">Buyer: {fmt(sc.buyer_cost)} | Seller: {fmt(sc.seller_cost)}</p>{sc.note && <p className="text-xs text-gray-400 mt-1">{sc.note}</p>}</div>))}
           {result.explainer_text && <p className="text-sm text-gray-600 mt-4 p-3 bg-gray-100 rounded">{result.explainer_text}</p>}
-        </div>) : <Placeholder />}</div>
+        </div>) : <Placeholder />}
+        {result && <ActionBar result={result} inputData={f} sheetType="buyer-compensation" onBack={() => setResult(null)} />}
+        </div>
       </div>
     </div>
   );
