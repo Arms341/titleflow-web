@@ -138,7 +138,7 @@ function ActionBar({ result, inputData, sheetType, onBack }: { result: any; inpu
       const res = await api.post(`/saved_sheets/${saved.id}/share`);
       const url = `${window.location.origin}/shared/${res.data.share_token}`;
       setShareUrl(url);
-      if (navigator.share) {
+      if ('share' in navigator) {
         await navigator.share({ title: `${sheetType === 'seller' ? 'Seller Net Sheet' : 'Buyer Estimate'} - ${inputData.property_address || 'Property'}`, text: `View your ${sheetType === 'seller' ? 'seller net sheet' : 'buyer estimate'} from HUB City Title`, url });
       } else {
         await navigator.clipboard.writeText(url);
@@ -174,7 +174,7 @@ function ActionBar({ result, inputData, sheetType, onBack }: { result: any; inpu
           )}
         </>
       )}
-      {shareUrl && (<div className="w-full p-3 bg-blue-50 border border-blue-200 rounded-md"><p className="text-sm text-blue-800 font-medium">{navigator.share ? 'Share sheet opened!' : 'Share link copied!'}</p><a href={shareUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline break-all">{shareUrl}</a></div>)}
+      {shareUrl && (<div className="w-full p-3 bg-blue-50 border border-blue-200 rounded-md"><p className="text-sm text-blue-800 font-medium">{'share' in navigator ? 'Share sheet opened!' : 'Share link copied!'}</p><a href={shareUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline break-all">{shareUrl}</a></div>)}
       {showOrderForm && saved && <OrderFormModal sheet={{ ...saved, input_data: inputData, output_data: result, sheet_type: sheetType }} onClose={() => setShowOrderForm(false)} onSuccess={(order) => { setShowOrderForm(false); setOrderSubmitted(order); }} />}
     </div>
   );

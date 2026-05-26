@@ -204,7 +204,7 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
       const res = await api.post(`/saved_sheets/${sheet.id}/share`);
       const url = res.data.share_url || `${window.location.origin}/shared/${res.data.share_token}`;
       setShareUrl(url);
-      if (navigator.share) {
+      if ('share' in navigator) {
         await navigator.share({ title: `${sheet.sheet_type === 'seller' ? 'Seller Net Sheet' : 'Buyer Estimate'} - ${sheet.property_address || 'Property'}`, text: `View your ${sheet.sheet_type === 'seller' ? 'seller net sheet' : 'buyer estimate'} from HUB City Title`, url });
       } else {
         await navigator.clipboard.writeText(url);
