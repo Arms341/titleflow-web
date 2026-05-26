@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { api } from '../lib/api';
 
 const CALCS = [
@@ -18,6 +20,8 @@ const CALCS = [
 
 const fmt = (v: any) => { if (v == null) return '$0.00'; const n = typeof v === 'string' ? parseFloat(v) : v; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n); };
 const pct = (v: any) => { if (v == null) return '0%'; return parseFloat(v).toFixed(2) + '%'; };
+
+const DONUT_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1'];
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <div><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>{children}</div>;
@@ -182,12 +186,64 @@ function ActionBar({ result, inputData, sheetType, onBack }: { result: any; inpu
 }
 
 function ResultPanel({ result, title }: { result: any; title: string }) {
+  // Build donut data from line_items
+  const donutData = (result.line_items || []).filter((item: any) => item.amount > 0).map((item: any, i: number) => ({
+    name: item.label, value: Math.abs(parseFloat(item.amount) || 0), color: DONUT_COLORS[i % DONUT_COLORS.length]
+  }));
+  const mainValue = result.net_proceeds ?? result.cash_to_close;
+  const mainLabel = result.net_proceeds != null ? 'Net Proceeds' : result.cash_to_close != null ? 'Cash to Close' : '';
+  const mainColor = result.net_proceeds != null ? 'text-emerald-600' : 'text-blue-600';
+
   return (
     <div className="bg-gray-50 p-6 rounded-lg border">
       <h3 className="font-semibold text-gray-700 mb-4">{title}</h3>
-      {result.net_proceeds != null && (<div className="text-center mb-4 p-4 bg-white rounded-lg border"><p className="text-xs text-gray-500 uppercase tracking-wide">Estimated Net Proceeds</p><p className="text-3xl font-bold text-emerald-600">{fmt(result.net_proceeds)}</p></div>)}
-      {result.cash_to_close != null && (<div className="text-center mb-4 p-4 bg-white rounded-lg border"><p className="text-xs text-gray-500 uppercase tracking-wide">Estimated Cash to Close</p><p className="text-3xl font-bold text-blue-600">{fmt(result.cash_to_close)}</p></div>)}
-      {result.line_items?.length > 0 && (<div className="space-y-0.5">{result.line_items.map((item: any, i: number) => (<div key={i} className="flex justify-between text-sm py-1.5 border-b border-gray-200"><span className="text-gray-700">{item.label}</span><span className="font-medium">{fmt(item.amount)}</span></div>))}</div>)}
+
+      {/* Donut Chart */}
+      {mainValue != null && donutData.length > 0 && (
+        <div className="mb-4">
+          <div className="relative">
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={donutData} cx="50%" cy="50%" innerRadius={65} outerRadius={95} paddingAngle={2} dataKey="value" stroke="none">
+                  {donutData.map((d: any, i: number) => <Cell key={i} fill={d.color} />)}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <p className="text-xs text-gray-500 uppercase tracking-wide">{mainLabel}</p>
+              <p className={`text-2xl font-bold ${mainColor}`}>{fmt(mainValue)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fallback big number if no donut */}
+      {mainValue != null && donutData.length === 0 && (
+        <div className="text-center mb-4 p-4 bg-white rounded-lg border">
+          <p className="text-xs text-gray-500 uppercase tracking-wide">{mainLabel}</p>
+          <p className={`text-3xl font-bold ${mainColor}`}>{fmt(mainValue)}</p>
+        </div>
+      )}
+
+      {/* Legend / Line Items */}
+      {donutData.length > 0 ? (
+        <div className="space-y-1">
+          {donutData.map((d: any, i: number) => (
+            <div key={i} className="flex items-center justify-between text-sm py-1 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: d.color }} />
+                <span className="text-gray-700">{d.name}</span>
+              </div>
+              <span className="font-medium">{fmt(d.value)}</span>
+            </div>
+          ))}
+        </div>
+      ) : result.line_items?.length > 0 ? (
+        <div className="space-y-0.5">{result.line_items.map((item: any, i: number) => (
+          <div key={i} className="flex justify-between text-sm py-1.5 border-b border-gray-200"><span className="text-gray-700">{item.label}</span><span className="font-medium">{fmt(item.amount)}</span></div>
+        ))}</div>
+      ) : null}
+
       <div className="mt-4 pt-3 border-t-2 border-gray-300 space-y-1">
         {result.sale_price != null && <div className="flex justify-between text-sm"><span>Sale Price</span><span className="font-semibold">{fmt(result.sale_price)}</span></div>}
         {result.purchase_price != null && <div className="flex justify-between text-sm"><span>Purchase Price</span><span className="font-semibold">{fmt(result.purchase_price)}</span></div>}
@@ -198,10 +254,11 @@ function ResultPanel({ result, title }: { result: any; title: string }) {
 }
 
 // ── 1. SELLER NET SHEET ──
-function SellerForm({ counties, onBack }: { counties: any[]; onBack: () => void }) {
+function SellerForm({ counties, onBack, prefill }: { counties: any[]; onBack: () => void; prefill?: any }) {
   const { data: taxDistricts } = useQuery({ queryKey: ['tax-districts'], queryFn: () => api.get('/tax_districts/').then(r => r.data) });
   const districts = taxDistricts || [];
-  const [f, sF] = useState({ sale_price: '350000', existing_loan_balance: '150000', seller_agent_commission_pct: '3.0', buyer_agent_commission_pct: '3.0', county_id: counties[0]?.id?.toString() || '1', closing_date: '2026-07-15', prior_title_insurance: false, years_since_prior_policy: '0', hoa_payoff: '0', seller_concessions: '0', include_home_warranty: true, include_survey: false, miscellaneous_fees: '0', annual_property_taxes: '0', property_address: '', client_name: '', tax_district_id: '' });
+  const defaults = { sale_price: '350000', existing_loan_balance: '150000', seller_agent_commission_pct: '3.0', buyer_agent_commission_pct: '3.0', county_id: counties[0]?.id?.toString() || '1', closing_date: '2026-07-15', prior_title_insurance: false, years_since_prior_policy: '0', hoa_payoff: '0', seller_concessions: '0', include_home_warranty: true, include_survey: false, miscellaneous_fees: '0', annual_property_taxes: '0', property_address: '', client_name: '', tax_district_id: '' };
+  const [f, sF] = useState(prefill ? { ...defaults, ...Object.fromEntries(Object.entries(prefill).filter(([_, v]) => v !== null && v !== undefined).map(([k, v]) => [k, String(v)])), prior_title_insurance: prefill.prior_title_insurance ?? false, include_home_warranty: prefill.include_home_warranty ?? true, include_survey: prefill.include_survey ?? false } : defaults);
   const [result, setResult] = useState<any>(null); const [loading, setLoading] = useState(false); const [error, setError] = useState('');
   const s = (k: string, v: any) => {
     const next = { ...f, [k]: v };
@@ -265,10 +322,11 @@ function SellerForm({ counties, onBack }: { counties: any[]; onBack: () => void 
 }
 
 // ── 2. BUYER ESTIMATE ──
-function BuyerForm({ counties, onBack }: { counties: any[]; onBack: () => void }) {
+function BuyerForm({ counties, onBack, prefill }: { counties: any[]; onBack: () => void; prefill?: any }) {
   const { data: taxDistricts } = useQuery({ queryKey: ['tax-districts'], queryFn: () => api.get('/tax_districts/').then(r => r.data) });
   const districts = taxDistricts || [];
-  const [f, sF] = useState({ purchase_price: '350000', loan_amount: '280000', loan_type: 'conventional', interest_rate: '6.75', county_id: counties[0]?.id?.toString() || '1', closing_date: '2026-07-15', annual_property_taxes: '0', annual_homeowners_insurance: '1800', months_insurance_prepaid: '3', months_tax_escrow: '3', seller_paid_closing_costs: '0', property_address: '', client_name: '', tax_district_id: '' });
+  const defaults = { purchase_price: '350000', loan_amount: '280000', loan_type: 'conventional', interest_rate: '6.75', county_id: counties[0]?.id?.toString() || '1', closing_date: '2026-07-15', annual_property_taxes: '0', annual_homeowners_insurance: '1800', months_insurance_prepaid: '3', months_tax_escrow: '3', seller_paid_closing_costs: '0', property_address: '', client_name: '', tax_district_id: '' };
+  const [f, sF] = useState(prefill ? { ...defaults, ...Object.fromEntries(Object.entries(prefill).filter(([_, v]) => v !== null && v !== undefined).map(([k, v]) => [k, String(v)])) } : defaults);
   const [result, setResult] = useState<any>(null); const [loading, setLoading] = useState(false); const [error, setError] = useState('');
   const s = (k: string, v: any) => {
     const next = { ...f, [k]: v };
@@ -646,13 +704,19 @@ function BuyerCompensationForm({ onBack }: { onBack: () => void }) {
 
 // ── MAIN PAGE ──
 export default function CalculatorPage() {
-  const [active, setActive] = useState<string | null>(null);
+  const location = useLocation();
+  const prefillState = location.state as { prefill?: any; sheetType?: string } | null;
+  const [active, setActive] = useState<string | null>(
+    prefillState?.sheetType === 'seller' ? 'seller-net-sheet' :
+    prefillState?.sheetType === 'buyer' ? 'buyer-estimate' : null
+  );
+  const [prefill] = useState(prefillState?.prefill || null);
   const { data: counties } = useQuery({ queryKey: ['counties'], queryFn: () => api.get('/counties/').then(r => r.data) });
   const c = counties || [];
-  const onBack = () => setActive(null);
+  const onBack = () => { setActive(null); window.history.replaceState({}, ''); };
 
-  if (active === 'seller-net-sheet') return <div className="p-6 max-w-6xl mx-auto"><SellerForm counties={c} onBack={onBack} /></div>;
-  if (active === 'buyer-estimate') return <div className="p-6 max-w-6xl mx-auto"><BuyerForm counties={c} onBack={onBack} /></div>;
+  if (active === 'seller-net-sheet') return <div className="p-6 max-w-6xl mx-auto"><SellerForm counties={c} onBack={onBack} prefill={active === 'seller-net-sheet' ? prefill : undefined} /></div>;
+  if (active === 'buyer-estimate') return <div className="p-6 max-w-6xl mx-auto"><BuyerForm counties={c} onBack={onBack} prefill={active === 'buyer-estimate' ? prefill : undefined} /></div>;
   if (active === 'truvalue') return <div className="p-6 max-w-6xl mx-auto"><TruValueForm counties={c} onBack={onBack} /></div>;
   if (active === 'scenario-compare') return <div className="p-6 max-w-6xl mx-auto"><ScenarioCompareForm counties={c} onBack={onBack} /></div>;
   if (active === 'buyer-compensation') return <div className="p-6 max-w-6xl mx-auto"><BuyerCompensationForm onBack={onBack} /></div>;

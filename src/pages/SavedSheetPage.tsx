@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const fmt = (v: any) => { if (v == null) return '-'; const n = typeof v === 'string' ? parseFloat(v) : v; if (isNaN(n)) return '-'; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n); };
 
@@ -192,6 +193,7 @@ function OrderFormModal({ sheet, onClose, onSuccess }: { sheet: any; onClose: ()
 
 // -- Sheet Detail View --
 function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
+  const navigate = useNavigate();
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [showOrderForm, setShowOrderForm] = useState(false);
@@ -312,8 +314,10 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
           </div>
         )}
 
-        {/* Share / PDF / Email buttons */}
+        {/* Share / PDF / Email / Edit buttons */}
         <div className="flex flex-wrap gap-3">
+          <button onClick={() => navigate('/calculators', { state: { prefill: sheet.input_data, sheetType: sheet.sheet_type } })}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm">Edit & Recalculate</button>
           <button onClick={handleShare} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm">Share with Client</button>
           <button onClick={handlePdf} disabled={downloading} className="flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm">
             {downloading ? 'Generating...' : 'Download PDF'}
