@@ -27,6 +27,12 @@ export default function AdminPage() {
   const { data: topAgents } = useQuery({ queryKey: ['admin-top-agents'], queryFn: () => api.get('/admin/top-agents').then(r => r.data) });
   const approveMutation = useMutation({ mutationFn: (id: number) => api.put(`/auth/agents/${id}/approve`), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-agents'] }); queryClient.invalidateQueries({ queryKey: ['admin-stats'] }); } });
   const deactivateMutation = useMutation({ mutationFn: (id: number) => api.put(`/auth/agents/${id}/deactivate`), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-agents'] }); queryClient.invalidateQueries({ queryKey: ['admin-stats'] }); } });
+  const [showAddAgent, setShowAddAgent] = useState(false);
+  const [newAgent, setNewAgent] = useState({ email: '', password: '', full_name: '', phone: '', brokerage_name: '' });
+  const createAgentMutation = useMutation({
+    mutationFn: (data: any) => api.post('/auth/agents/create', data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-agents'] }); queryClient.invalidateQueries({ queryKey: ['admin-stats'] }); setShowAddAgent(false); setNewAgent({ email: '', password: '', full_name: '', phone: '', brokerage_name: '' }); },
+  });
   const agentList = Array.isArray(agents) ? agents : [];
   const topList = Array.isArray(topAgents) ? topAgents : [];
   if (statsLoading) return <div className="p-6 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto" /></div>;
@@ -68,6 +74,33 @@ export default function AdminPage() {
       )}
 
       {tab === 'agents' && (
+        <>
+        <div className="flex justify-between items-center mb-4">
+          <div />
+          <button onClick={() => setShowAddAgent(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">+ Add Agent</button>
+        </div>
+        {showAddAgent && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center" onClick={() => setShowAddAgent(false)}>
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Add Agent</h3>
+              <div className="space-y-3">
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label><input type="text" value={newAgent.full_name} onChange={e => setNewAgent(p => ({ ...p, full_name: e.target.value }))} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Jane Smith" /></div>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Email *</label><input type="email" value={newAgent.email} onChange={e => setNewAgent(p => ({ ...p, email: e.target.value }))} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="agent@example.com" /></div>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Temp Password *</label><input type="text" value={newAgent.password} onChange={e => setNewAgent(p => ({ ...p, password: e.target.value }))} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="min 8 characters" /></div>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Phone</label><input type="tel" value={newAgent.phone} onChange={e => setNewAgent(p => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="(806) 555-1234" /></div>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Brokerage</label><input type="text" value={newAgent.brokerage_name} onChange={e => setNewAgent(p => ({ ...p, brokerage_name: e.target.value }))} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Keller Williams" /></div>
+              </div>
+              {createAgentMutation.isError && <p className="text-red-600 text-sm mt-2">{(createAgentMutation.error as any)?.response?.data?.detail || 'Failed to create agent'}</p>}
+              <div className="flex justify-end gap-3 mt-6">
+                <button onClick={() => setShowAddAgent(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+                <button onClick={() => createAgentMutation.mutate(newAgent)} disabled={!newAgent.email || !newAgent.password || newAgent.password.length < 8 || createAgentMutation.isPending}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50">
+                  {createAgentMutation.isPending ? 'Creating...' : 'Create Agent'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="bg-white rounded-lg shadow border overflow-hidden">
           {agentsLoading ? (<div className="p-6 text-center"><RefreshCw size={20} className="animate-spin mx-auto text-gray-400" /></div>
           ) : agentList.length === 0 ? (<div className="p-12 text-center text-gray-500">No agents registered yet</div>
@@ -95,6 +128,7 @@ export default function AdminPage() {
             </table>
           )}
         </div>
+        </>
       )}
 
       {tab === 'settings' && <FeeSettingsPanel />}
