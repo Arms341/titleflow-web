@@ -104,6 +104,7 @@ export default function OrderPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Buyer</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -115,6 +116,10 @@ export default function OrderPage() {
                   <td className="px-4 py-3 text-sm text-gray-600">{o.buyer_name || '-'}</td>
                   <td className="px-4 py-3"><span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[o.status] || 'bg-gray-100 text-gray-800'}`}>{o.status || 'pending'}</span></td>
                   <td className="px-4 py-3 text-sm text-gray-500">{o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</td>
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => { if (confirm(`Delete Order #${o.id}?`)) deleteMutation.mutate(o.id); }}
+                      className="px-2 py-1 text-xs bg-red-50 text-red-700 border border-red-200 rounded hover:bg-red-100">Delete</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
