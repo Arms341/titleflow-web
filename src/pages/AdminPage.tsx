@@ -116,6 +116,49 @@ function FeeInput({ label, value, onChange, prefix }: { label: string; value: nu
   );
 }
 
+function ReissueDiscountTiers() {
+  const queryClient = useQueryClient();
+  const { data: tiers, isLoading } = useQuery({ queryKey: ['reissue-discounts'], queryFn: () => api.get('/reissue_discounts/').then(r => r.data) });
+  const updateMutation = useMutation({
+    mutationFn: ({ id, discount_pct }: { id: number; discount_pct: number }) => api.put(`/reissue_discounts/${id}`, { discount_pct }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reissue-discounts'] }),
+  });
+  const addMutation = useMutation({
+    mutationFn: (data: any) => api.post('/reissue_discounts/', data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reissue-discounts'] }),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/reissue_discounts/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reissue-discounts'] }),
+  });
+  const list = Array.isArray(tiers) ? tiers.sort((a: any, b: any) => a.years_since_prior_policy - b.years_since_prior_policy) : [];
+  const usedYears = new Set(list.map((t: any) => t.years_since_prior_policy));
+  const nextYear = [1,2,3,4,5,6,7,8,9,10].find(y => !usedYears.has(y));
+  return (
+    <div className="bg-white rounded-lg shadow border p-6">
+      <h3 className="font-semibold text-gray-800 mb-2">Reissue Discount Tiers</h3>
+      <p className="text-sm text-gray-500 mb-4">Discount applied to Owner's Title Policy when prior title insurance exists. Only used when Reissue Discount toggle is ON.</p>
+      {isLoading ? <div className="text-sm text-gray-400">Loading...</div> : list.length === 0 ? (
+        <p className="text-sm text-gray-400 mb-3">No tiers configured.</p>
+      ) : (
+        <table className="w-full text-sm mb-4">
+          <thead><tr className="border-b"><th className="text-left py-2 text-gray-500 font-medium">Years Since Prior Policy</th><th className="text-left py-2 text-gray-500 font-medium">Discount %</th><th className="py-2"></th></tr></thead>
+          <tbody>
+            {list.map((tier: any) => (
+              <tr key={tier.id} className="border-b border-gray-100">
+                <td className="py-2 font-medium text-gray-700">{tier.years_since_prior_policy} year{tier.years_since_prior_policy > 1 ? 's' : ''} or less</td>
+                <td className="py-2"><div className="flex items-center gap-1"><input type="number" step="1" min="0" max="100" defaultValue={tier.discount_pct} onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v !== parseFloat(tier.discount_pct)) updateMutation.mutate({ id: tier.id, discount_pct: v }); }} className="w-20 px-2 py-1 border rounded text-sm" /><span className="text-gray-400">%</span></div></td>
+                <td className="py-2 text-right"><button onClick={() => { if (confirm('Remove this tier?')) deleteMutation.mutate(tier.id); }} className="text-xs text-red-500 hover:text-red-700">Remove</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {nextYear && <button onClick={() => addMutation.mutate({ rate_table_id: 1, years_since_prior_policy: nextYear, discount_pct: 15 })} className="text-sm text-blue-600 hover:text-blue-800 font-medium">+ Add Tier ({nextYear} year{nextYear > 1 ? 's' : ''})</button>}
+    </div>
+  );
+}
+
 function FeeSettingsPanel() {
   const queryClient = useQueryClient();
   const { data: fees, isLoading } = useQuery({ queryKey: ['admin-fee-settings'], queryFn: () => api.get('/admin/fee-settings').then(r => r.data) });
@@ -178,6 +221,7 @@ function FeeSettingsPanel() {
           ))}
         </div>
       </div>
+      <ReissueDiscountTiers />
       <div className="flex items-center gap-4">
         <button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}
           className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm disabled:opacity-50">
