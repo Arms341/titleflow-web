@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const fmt = (v: any) => { if (v == null) return '-'; const n = typeof v === 'string' ? parseFloat(v) : v; if (isNaN(n)) return '-'; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n); };
 
@@ -12,6 +13,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function OrderDetail({ order, onBack }: { order: any; onBack: () => void }) {
+  const navigate = useNavigate();
   const out = order.saved_sheet_output || {};
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -49,7 +51,7 @@ function OrderDetail({ order, onBack }: { order: any; onBack: () => void }) {
 
         {order.saved_sheet_id && (
           <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-            <a href={`/saved-sheets?id=${order.saved_sheet_id}`} className="text-sm text-indigo-700 hover:text-indigo-900 underline cursor-pointer">Linked to Saved Sheet #{order.saved_sheet_id}</a>
+            <button onClick={() => navigate('/saved-sheets', { state: { viewSheetId: order.saved_sheet_id } })} className="text-sm text-indigo-700 hover:text-indigo-900 underline cursor-pointer">Linked to Saved Sheet #{order.saved_sheet_id}</button>
           </div>
         )}
       </div>

@@ -472,12 +472,22 @@ export default function SavedSheetPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const incomingSheet = (location.state as any)?.viewSheet || null;
+  const incomingSheetId = (location.state as any)?.viewSheetId || null;
   const [viewing, setViewing] = useState<any>(incomingSheet);
 
   const { data: sheets, isLoading } = useQuery({
     queryKey: ['saved-sheets'],
     queryFn: () => api.get('/saved_sheets/').then(r => r.data),
   });
+
+  // When navigating from Orders with viewSheetId, find and display the sheet
+  useEffect(() => {
+    if (incomingSheetId && !viewing && sheets) {
+      const list = Array.isArray(sheets) ? sheets : sheets?.items ?? [];
+      const found = list.find((s: any) => s.id === incomingSheetId);
+      if (found) setViewing(found);
+    }
+  }, [incomingSheetId, sheets, viewing]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/saved_sheets/${id}`),
