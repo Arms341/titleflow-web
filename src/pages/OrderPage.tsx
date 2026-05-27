@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -12,7 +12,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-800',
 };
 
-function OrderDetail({ order, onBack }: { order: any; onBack: () => void }) {
+function OrderDetail({ order, onBack, onDelete }: { order: any; onBack: () => void; onDelete: (id: number) => void }) {
   const navigate = useNavigate();
   const out = order.saved_sheet_output || {};
   return (
@@ -54,21 +54,32 @@ function OrderDetail({ order, onBack }: { order: any; onBack: () => void }) {
             <button onClick={() => navigate('/saved-sheets', { state: { viewSheetId: order.saved_sheet_id } })} className="text-sm text-indigo-700 hover:text-indigo-900 underline cursor-pointer">Linked to Saved Sheet #{order.saved_sheet_id}</button>
           </div>
         )}
+
+        <div className="mt-6 pt-4 border-t flex justify-end">
+          <button onClick={() => { if (confirm(`Delete Order #${order.id}? This cannot be undone.`)) onDelete(order.id); }}
+            className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 text-sm font-medium">Delete Order</button>
+        </div>
       </div>
     </div>
   );
 }
 
 export default function OrderPage() {
+  const queryClient = useQueryClient();
   const [viewing, setViewing] = useState<any>(null);
   const { data: orders, isLoading } = useQuery({
     queryKey: ['orders'],
     queryFn: () => api.get('/orders/').then(r => r.data),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/orders/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['orders'] }); setViewing(null); },
+  });
+
   const list = Array.isArray(orders) ? orders : orders?.items ?? [];
 
-  if (viewing) return <OrderDetail order={viewing} onBack={() => setViewing(null)} />;
+  if (viewing) return <OrderDetail order={viewing} onBack={() => setViewing(null)} onDelete={(id) => deleteMutation.mutate(id)} />;
   if (isLoading) return <div className="p-6 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto" /></div>;
 
   return (
