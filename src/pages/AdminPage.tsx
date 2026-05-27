@@ -144,6 +144,7 @@ function FeeSettingsPanel() {
           <FeeInput label="E-Recording (Buyer)" value={form.e_recording_fee_buyer} onChange={v => u('e_recording_fee_buyer', v)} />
           <FeeInput label="TX Policy Guaranty Fee" value={form.guaranty_fee} onChange={v => u('guaranty_fee', v)} />
           <FeeInput label="Survey Fee" value={form.survey_fee} onChange={v => u('survey_fee', v)} />
+          <FeeInput label="Title Search Fee" value={form.title_search_fee_amount} onChange={v => u('title_search_fee_amount', v)} />
           <FeeInput label="Default Home Warranty" value={form.default_home_warranty} onChange={v => u('default_home_warranty', v)} />
         </div>
       </div>
