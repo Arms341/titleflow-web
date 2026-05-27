@@ -231,6 +231,42 @@ function ActionBar({ result, inputData, sheetType, onBack }: { result: any; inpu
   );
 }
 
+function ShareOnlyBar({ result, inputData, sheetType }: { result: any; inputData: any; sheetType: string }) {
+  const [copied, setCopied] = useState(false);
+  const calcName = CALCS.find(c => c.slug === sheetType)?.name || sheetType;
+  const buildShareText = () => {
+    let text = `${calcName} Results\n`;
+    if (inputData.property_address) text += `Property: ${inputData.property_address}\n`;
+    text += `\n`;
+    if (result.line_items?.length) {
+      result.line_items.forEach((item: any) => { text += `${item.label}: ${fmt(item.amount)}\n`; });
+      text += `\n`;
+    }
+    if (result.net_proceeds != null) text += `Net Proceeds: ${fmt(result.net_proceeds)}\n`;
+    if (result.cash_to_close != null) text += `Cash to Close: ${fmt(result.cash_to_close)}\n`;
+    if (result.total_monthly_cost != null) text += `Total Monthly Cost: ${fmt(result.total_monthly_cost)}\n`;
+    if (result.total_holding_cost != null) text += `Total Holding Cost: ${fmt(result.total_holding_cost)}\n`;
+    if (result.recommendation) text += `\n${result.recommendation}\n`;
+    text += `\nPowered by HUB City Title`;
+    return text;
+  };
+  const handleShare = async () => {
+    const text = buildShareText();
+    const canShare = typeof navigator !== 'undefined' && 'share' in navigator;
+    if (canShare) {
+      try { await navigator.share({ title: `${calcName} - HUB City Title`, text }); return; } catch (e: any) { if (e.name === 'AbortError') return; }
+    }
+    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 3000); } catch {}
+  };
+  return (
+    <div className="mt-4">
+      <button onClick={handleShare} className="w-full py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 font-medium">
+        {copied ? 'Copied to Clipboard!' : 'Share Results'}
+      </button>
+    </div>
+  );
+}
+
 function ResultPanel({ result, title }: { result: any; title: string }) {
   // Build donut data from line_items
   const donutData = (result.line_items || []).filter((item: any) => item.amount > 0).map((item: any, i: number) => ({
@@ -302,12 +338,15 @@ function ResultPanel({ result, title }: { result: any; title: string }) {
 // ── 1. SELLER NET SHEET ──
 function SellerForm({ counties, onBack, prefill }: { counties: any[]; onBack: () => void; prefill?: any }) {
   const { data: taxDistricts } = useQuery({ queryKey: ['tax-districts'], queryFn: () => api.get('/tax_districts/').then(r => r.data) });
-  const districts = taxDistricts || [];
-  const defaults = { sale_price: '350000', existing_loan_balance: '150000', seller_agent_commission_pct: '3.0', buyer_agent_commission_pct: '3.0', county_id: counties[0]?.id?.toString() || '1', closing_date: '2026-07-15', prior_title_insurance: false, years_since_prior_policy: '0', hoa_payoff: '0', seller_concessions: '0', include_home_warranty: true, include_survey: false, miscellaneous_fees: '0', annual_property_taxes: '0', property_address: '', client_name: '', tax_district_id: '' };
+  const allDistricts = taxDistricts || [];
+  const defaults = { sale_price: '350000', existing_loan_balance: '150000', seller_agent_commission_pct: '3.0', buyer_agent_commission_pct: '3.0', county_id: counties[0]?.id?.toString() || '1', closing_date: '2026-07-15', prior_title_insurance: false, years_since_prior_policy: '0', hoa_payoff: '0', seller_concessions: '0', include_home_warranty: true, include_survey: false, miscellaneous_fees: '0', annual_property_taxes: '0', property_address: '', client_name: '', tax_district_id: '', home_warranty_amount: '700' };
   const [f, sF] = useState(prefill ? { ...defaults, ...Object.fromEntries(Object.entries(prefill).filter(([_, v]) => v !== null && v !== undefined).map(([k, v]) => [k, String(v)])), prior_title_insurance: prefill.prior_title_insurance ?? false, include_home_warranty: prefill.include_home_warranty ?? true, include_survey: prefill.include_survey ?? false } : defaults);
   const [result, setResult] = useState<any>(null); const [loading, setLoading] = useState(false); const [error, setError] = useState('');
+  const districts = allDistricts.filter((d: any) => d.county_id?.toString() === f.county_id?.toString());
   const s = (k: string, v: any) => {
     const next = { ...f, [k]: v };
+    // Reset tax district when county changes
+    if (k === 'county_id') { next.tax_district_id = ''; next.annual_property_taxes = '0'; }
     // Auto-calc taxes when district or sale price changes
     if (k === 'tax_district_id' || k === 'sale_price') {
       const distId = k === 'tax_district_id' ? v : next.tax_district_id;
@@ -321,7 +360,7 @@ function SellerForm({ counties, onBack, prefill }: { counties: any[]; onBack: ()
     }
     sF(next);
   };
-  const calc = async () => { setLoading(true); setError(''); try { const res = await api.post('/calculators/seller-net-sheet', { ...f, sale_price: parseFloat(f.sale_price), existing_loan_balance: parseFloat(f.existing_loan_balance), seller_agent_commission_pct: parseFloat(f.seller_agent_commission_pct), buyer_agent_commission_pct: parseFloat(f.buyer_agent_commission_pct), county_id: parseInt(f.county_id), hoa_payoff: parseFloat(f.hoa_payoff), seller_concessions: parseFloat(f.seller_concessions), miscellaneous_fees: parseFloat(f.miscellaneous_fees), annual_property_taxes: parseFloat(f.annual_property_taxes), years_since_prior_policy: f.prior_title_insurance ? parseInt(f.years_since_prior_policy) : null }); setResult(res.data); } catch (e: any) { setError(e.response?.data?.detail || 'Calculation failed'); } setLoading(false); };
+  const calc = async () => { setLoading(true); setError(''); try { const res = await api.post('/calculators/seller-net-sheet', { ...f, sale_price: parseFloat(f.sale_price), existing_loan_balance: parseFloat(f.existing_loan_balance), seller_agent_commission_pct: parseFloat(f.seller_agent_commission_pct), buyer_agent_commission_pct: parseFloat(f.buyer_agent_commission_pct), county_id: parseInt(f.county_id), hoa_payoff: parseFloat(f.hoa_payoff), seller_concessions: parseFloat(f.seller_concessions), miscellaneous_fees: parseFloat(f.miscellaneous_fees), annual_property_taxes: parseFloat(f.annual_property_taxes), home_warranty_amount: parseFloat(f.home_warranty_amount), years_since_prior_policy: f.prior_title_insurance ? parseInt(f.years_since_prior_policy) : null }); setResult(res.data); } catch (e: any) { setError(e.response?.data?.detail || 'Calculation failed'); } setLoading(false); };
   return (
     <div className="mt-4"><Header icon="🏠" name="Seller Net Sheet" desc="Calculate estimated net proceeds for seller" onBack={onBack} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -353,8 +392,8 @@ function SellerForm({ counties, onBack, prefill }: { counties: any[]; onBack: ()
           </Field>
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.include_home_warranty} onChange={e => s('include_home_warranty', e.target.checked)} /> Include Home Warranty</label>
+            {f.include_home_warranty && <Field label="Home Warranty Amount"><Inp value={f.home_warranty_amount} onChange={(v: string) => s('home_warranty_amount', v)} prefix="$" /></Field>}
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.include_survey} onChange={e => s('include_survey', e.target.checked)} /> Include Survey</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.prior_title_insurance} onChange={e => s('prior_title_insurance', e.target.checked)} /> Prior Title Insurance (Reissue Rate)</label>
           </div>
           <Section title="Other Costs" />
           <div className="grid grid-cols-2 gap-3"><Field label="HOA Payoff"><Inp value={f.hoa_payoff} onChange={(v: string) => s('hoa_payoff', v)} prefix="$" /></Field><Field label="Seller Concessions"><Inp value={f.seller_concessions} onChange={(v: string) => s('seller_concessions', v)} prefix="$" /></Field></div>
@@ -370,12 +409,14 @@ function SellerForm({ counties, onBack, prefill }: { counties: any[]; onBack: ()
 // ── 2. BUYER ESTIMATE ──
 function BuyerForm({ counties, onBack, prefill }: { counties: any[]; onBack: () => void; prefill?: any }) {
   const { data: taxDistricts } = useQuery({ queryKey: ['tax-districts'], queryFn: () => api.get('/tax_districts/').then(r => r.data) });
-  const districts = taxDistricts || [];
+  const allDistricts = taxDistricts || [];
   const defaults = { purchase_price: '350000', loan_amount: '280000', loan_type: 'conventional', interest_rate: '6.75', county_id: counties[0]?.id?.toString() || '1', closing_date: '2026-07-15', annual_property_taxes: '0', annual_homeowners_insurance: '2850', months_insurance_prepaid: '14', months_tax_escrow: '4', seller_paid_closing_costs: '0', property_address: '', client_name: '', tax_district_id: '', misc_lender_fees: '1100', appraisal_fee: '450', credit_report_fee: '40', survey_fee: '500', pest_inspection_fee: '100', home_inspection_fee: '400', escrow_fee: '250', doc_prep_buyer: '225', t19_endorsement: '80.99', survey_cover_endorsement: '99.15', t17_endorsement: '25', t36_endorsement: '25', t30_endorsement: '25' };
   const [f, sF] = useState(prefill ? { ...defaults, ...Object.fromEntries(Object.entries(prefill).filter(([_, v]) => v !== null && v !== undefined).map(([k, v]) => [k, String(v)])) } : defaults);
   const [result, setResult] = useState<any>(null); const [loading, setLoading] = useState(false); const [error, setError] = useState('');
+  const districts = allDistricts.filter((d: any) => d.county_id?.toString() === f.county_id?.toString());
   const s = (k: string, v: any) => {
     const next = { ...f, [k]: v };
+    if (k === 'county_id') { next.tax_district_id = ''; next.annual_property_taxes = '0'; }
     if (k === 'tax_district_id' || k === 'purchase_price') {
       const distId = k === 'tax_district_id' ? v : next.tax_district_id;
       const price = k === 'purchase_price' ? parseFloat(v) : parseFloat(next.purchase_price);
@@ -434,8 +475,6 @@ function BuyerForm({ counties, onBack, prefill }: { counties: any[]; onBack: () 
           </div>
           <Section title="Title Endorsements" />
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Escrow Fee"><Inp value={f.escrow_fee} onChange={(v: string) => s('escrow_fee', v)} prefix="$" /></Field>
-            <Field label="Doc Prep"><Inp value={f.doc_prep_buyer} onChange={(v: string) => s('doc_prep_buyer', v)} prefix="$" /></Field>
             <Field label="T-19 Endorsement"><Inp value={f.t19_endorsement} onChange={(v: string) => s('t19_endorsement', v)} prefix="$" /></Field>
             <Field label="Survey Cover"><Inp value={f.survey_cover_endorsement} onChange={(v: string) => s('survey_cover_endorsement', v)} prefix="$" /></Field>
             <Field label="T-17 Mortgagee's"><Inp value={f.t17_endorsement} onChange={(v: string) => s('t17_endorsement', v)} prefix="$" /></Field>
@@ -534,7 +573,7 @@ function TruValueForm({ counties, onBack }: { counties: any[]; onBack: () => voi
           ))}
         </div>
       )}
-      {result && <ActionBar result={result} inputData={f} sheetType="truvalue" onBack={() => setResult(null)} />}
+      {result && <ShareOnlyBar result={result} inputData={f} sheetType="truvalue" />}
     </div>
   );
 }
@@ -564,7 +603,7 @@ function SellVsRentForm({ onBack }: { onBack: () => void }) {
             {result.projection?.map((y: any) => (<tr key={y.year} className="border-b"><td className="py-1">{y.year}</td><td className="text-right">{fmt(y.equity_if_sell)}</td><td className="text-right">{fmt(y.net_if_rent)}</td><td className={`text-right font-medium ${parseFloat(y.difference) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{fmt(y.difference)}</td></tr>))}
           </tbody></table>
         </div>) : <Placeholder />}
-        {result && <ActionBar result={result} inputData={f} sheetType="sell-vs-rent" onBack={() => setResult(null)} />}
+        {result && <ShareOnlyBar result={result} inputData={f} sheetType="sell-vs-rent" />}
         </div>
       </div>
     </div>
@@ -595,7 +634,7 @@ function HoldingCostForm({ onBack }: { onBack: () => void }) {
           <div className="text-center mb-4 p-4 bg-white rounded-lg border"><p className="text-xs text-gray-500 uppercase">Total ({f.months_holding} months)</p><p className="text-3xl font-bold text-red-600">{fmt(result.total_cost)}</p></div>
           {result.line_items?.map((item: any, i: number) => (<div key={i} className="flex justify-between text-sm py-1.5 border-b"><span>{item.label}</span><span className="font-medium">{fmt(item.amount)}</span></div>))}
         </div>) : <Placeholder />}
-        {result && <ActionBar result={result} inputData={f} sheetType="holding-cost" onBack={() => setResult(null)} />}
+        {result && <ShareOnlyBar result={result} inputData={f} sheetType="holding-cost" />}
         </div>
       </div>
     </div>
@@ -626,7 +665,7 @@ function BuydownForm({ onBack }: { onBack: () => void }) {
             {result.schedule?.map((y: any) => (<tr key={y.year} className="border-b"><td className="py-1">{y.year}</td><td className="text-right">{pct(y.rate)}</td><td className="text-right">{fmt(y.payment)}</td><td className="text-right text-emerald-600">{fmt(y.monthly_savings)}</td></tr>))}
           </tbody></table>
         </div>) : <Placeholder />}
-        {result && <ActionBar result={result} inputData={f} sheetType="buydown" onBack={() => setResult(null)} />}
+        {result && <ShareOnlyBar result={result} inputData={f} sheetType="buydown" />}
         </div>
       </div>
     </div>
@@ -661,7 +700,7 @@ function ExtraPaymentForm({ onBack }: { onBack: () => void }) {
             <div className="p-3 bg-white rounded border"><p className="text-xs text-gray-500">Accelerated</p><p className="font-semibold text-emerald-600">{result.accelerated?.months ? Math.round(result.accelerated.months / 12) + ' yrs' : '-'}</p><p className="text-xs text-gray-400">Interest: {fmt(result.accelerated?.total_interest)}</p></div>
           </div>
         </div>) : <Placeholder />}
-        {result && <ActionBar result={result} inputData={f} sheetType="extra-payment" onBack={() => setResult(null)} />}
+        {result && <ShareOnlyBar result={result} inputData={f} sheetType="extra-payment" />}
         </div>
       </div>
     </div>
@@ -691,7 +730,7 @@ function BuyNowForm({ onBack }: { onBack: () => void }) {
           {result.future_scenarios?.map((sc: any, i: number) => (<div key={i} className="mb-3 p-4 bg-red-50 border border-red-200 rounded"><p className="text-xs text-red-700 uppercase font-semibold">Wait {sc.months_waited} months</p><p className="text-lg font-bold">{fmt(sc.price)} at {pct(sc.rate)}</p><p className="text-sm text-gray-600">Monthly: {fmt(sc.monthly_payment)} (+{fmt(sc.payment_increase)}/mo)</p><p className="text-sm text-red-600 font-semibold">Cost of waiting: {fmt(sc.total_cost_of_waiting)}</p></div>))}
           {result.recommendation && <p className="text-sm mt-3 p-3 bg-blue-50 border border-blue-200 rounded">{result.recommendation}</p>}
         </div>) : <Placeholder />}
-        {result && <ActionBar result={result} inputData={f} sheetType="buy-now-vs-later" onBack={() => setResult(null)} />}
+        {result && <ShareOnlyBar result={result} inputData={f} sheetType="buy-now-vs-later" />}
         </div>
       </div>
     </div>
@@ -718,7 +757,7 @@ function PriceVsRateForm({ onBack }: { onBack: () => void }) {
           {result.matrix.map((cell: any, i: number) => (<tr key={i} className="border-b"><td className="p-2 border">{fmt(cell.price)}</td><td className="p-2 border text-center">{pct(cell.rate)}</td><td className="p-2 border text-center font-medium">{fmt(cell.monthly_payment)}</td><td className={`p-2 border text-center ${parseFloat(cell.payment_delta) > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{parseFloat(cell.payment_delta) > 0 ? '+' : ''}{fmt(cell.payment_delta)}</td></tr>))}
         </tbody></table>
       </div>)}
-      {result && <ActionBar result={result} inputData={f} sheetType="price-vs-rate" onBack={() => setResult(null)} />}
+      {result && <ShareOnlyBar result={result} inputData={f} sheetType="price-vs-rate" />}
     </div>
   );
 }
@@ -772,7 +811,7 @@ function ScenarioCompareForm({ counties, onBack }: { counties: any[]; onBack: ()
           <p className="text-sm text-gray-600 mt-1">{result.recommendation}</p>
         </div>
       </div>)}
-      {result && <ActionBar result={result} inputData={f} sheetType="scenario-compare" onBack={() => setResult(null)} />}
+      {result && <ShareOnlyBar result={result} inputData={f} sheetType="scenario-compare" />}
     </div>
   );
 }
@@ -809,7 +848,7 @@ function BuyerCompensationForm({ onBack }: { onBack: () => void }) {
           {result.scenarios?.map((sc: any, i: number) => (<div key={i} className="mt-2 p-3 bg-white rounded border"><p className="font-medium text-sm">{sc.structure}</p><p className="text-xs text-gray-500">Buyer: {fmt(sc.buyer_cost)} | Seller: {fmt(sc.seller_cost)}</p>{sc.note && <p className="text-xs text-gray-400 mt-1">{sc.note}</p>}</div>))}
           {result.explainer_text && <p className="text-sm text-gray-600 mt-4 p-3 bg-gray-100 rounded">{result.explainer_text}</p>}
         </div>) : <Placeholder />}
-        {result && <ActionBar result={result} inputData={f} sheetType="buyer-compensation" onBack={() => setResult(null)} />}
+        {result && <ShareOnlyBar result={result} inputData={f} sheetType="buyer-compensation" />}
         </div>
       </div>
     </div>
