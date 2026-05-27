@@ -385,6 +385,7 @@ function SellerForm({ counties, onBack, prefill }: { counties: any[]; onBack: ()
               {districts.map((d: any) => <option key={d.id} value={d.id}>{d.name} — {parseFloat(d.combined_rate_pct).toFixed(2)}%</option>)}
             </select>
           </Field>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.homestead} onChange={e => s('homestead', e.target.checked)} /> Homestead Exemption ($100K school tax reduction)</label>
           <Field label="Annual Property Taxes">
             <div className="relative">
               <Inp value={f.annual_property_taxes} onChange={(v: string) => { sF(p => ({ ...p, annual_property_taxes: v, tax_district_id: 'custom' })); }} prefix="$" />
@@ -396,7 +397,6 @@ function SellerForm({ counties, onBack, prefill }: { counties: any[]; onBack: ()
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.include_home_warranty} onChange={e => s('include_home_warranty', e.target.checked)} /> Include Home Warranty</label>
             {f.include_home_warranty && <Field label="Home Warranty Amount"><Inp value={f.home_warranty_amount} onChange={(v: string) => s('home_warranty_amount', v)} prefix="$" /></Field>}
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.homestead} onChange={e => s('homestead', e.target.checked)} /> Homestead Exemption ($100K school tax reduction)</label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.include_survey} onChange={e => s('include_survey', e.target.checked)} /> Include Survey</label>
           </div>
           <Section title="Other Costs" />
@@ -458,6 +458,7 @@ function BuyerForm({ counties, onBack, prefill }: { counties: any[]; onBack: () 
               {districts.map((d: any) => <option key={d.id} value={d.id}>{d.name} — {parseFloat(d.combined_rate_pct).toFixed(2)}%</option>)}
             </select>
           </Field>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.homestead} onChange={e => s('homestead', e.target.checked)} /> Homestead Exemption ($100K school tax reduction)</label>
           <Field label="Annual Property Taxes">
             <div className="relative">
               <Inp value={f.annual_property_taxes} onChange={(v: string) => { sF(p => ({ ...p, annual_property_taxes: v, tax_district_id: 'custom' })); }} prefix="$" />
@@ -467,7 +468,6 @@ function BuyerForm({ counties, onBack, prefill }: { counties: any[]; onBack: () 
             </div>
           </Field>
           <Field label="Annual Homeowners Insurance"><Inp value={f.annual_homeowners_insurance} onChange={(v: string) => s('annual_homeowners_insurance', v)} prefix="$" /></Field>
-          <label className="flex items-center gap-2 text-sm mb-1"><input type="checkbox" checked={f.homestead} onChange={e => s('homestead', e.target.checked)} /> Homestead Exemption ($100K school tax reduction)</label>
           <div className="grid grid-cols-2 gap-3"><Field label="Months Insurance Prepaid"><Inp value={f.months_insurance_prepaid} onChange={(v: string) => s('months_insurance_prepaid', v)} /></Field><Field label="Months Tax Escrow"><Inp value={f.months_tax_escrow} onChange={(v: string) => s('months_tax_escrow', v)} /></Field></div>
           <Section title="Lender Fees" />
           <div className="grid grid-cols-3 gap-3">
