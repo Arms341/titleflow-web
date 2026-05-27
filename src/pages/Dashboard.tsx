@@ -128,7 +128,7 @@ export default function Dashboard() {
                       }`}>{sheet.sheet_type || 'Sheet'}</span>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {formatCurrency(sheet.net_proceeds || sheet.cash_to_close || sheet.total_closing_costs)}
+                      {formatCurrency(sheet.output_data?.net_proceeds || sheet.output_data?.cash_to_close || sheet.output_data?.total_closing_costs)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {sheet.created_at ? new Date(sheet.created_at).toLocaleDateString() : ''}
