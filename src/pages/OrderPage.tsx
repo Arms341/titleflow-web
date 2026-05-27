@@ -49,7 +49,7 @@ function OrderDetail({ order, onBack }: { order: any; onBack: () => void }) {
 
         {order.saved_sheet_id && (
           <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-            <p className="text-sm text-indigo-700">Linked to Saved Sheet #{order.saved_sheet_id}</p>
+            <a href={`/saved-sheets?id=${order.saved_sheet_id}`} className="text-sm text-indigo-700 hover:text-indigo-900 underline cursor-pointer">Linked to Saved Sheet #{order.saved_sheet_id}</a>
           </div>
         )}
       </div>
