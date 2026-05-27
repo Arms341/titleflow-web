@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const fmt = (v: any) => { if (v == null) return '-'; const n = typeof v === 'string' ? parseFloat(v) : v; if (isNaN(n)) return '-'; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n); };
 
@@ -66,7 +66,11 @@ function OrderDetail({ order, onBack, onDelete }: { order: any; onBack: () => vo
 
 export default function OrderPage() {
   const queryClient = useQueryClient();
+  const location = useLocation();
   const [viewing, setViewing] = useState<any>(null);
+
+  // Reset to list when nav link is clicked (same-route re-navigation)
+  useEffect(() => { setViewing(null); }, [location.key]);
   const { data: orders, isLoading } = useQuery({
     queryKey: ['orders'],
     queryFn: () => api.get('/orders/').then(r => r.data),

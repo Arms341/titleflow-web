@@ -475,6 +475,13 @@ export default function SavedSheetPage() {
   const incomingSheetId = (location.state as any)?.viewSheetId || null;
   const [viewing, setViewing] = useState<any>(incomingSheet);
 
+  // Reset to list when nav link is clicked (same-route re-navigation)
+  useEffect(() => {
+    if (!incomingSheet && !incomingSheetId) {
+      setViewing(null);
+    }
+  }, [location.key]);
+
   const { data: sheets, isLoading } = useQuery({
     queryKey: ['saved-sheets'],
     queryFn: () => api.get('/saved_sheets/').then(r => r.data),

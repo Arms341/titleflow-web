@@ -873,6 +873,14 @@ export default function CalculatorPage() {
     prefillState?.sheetType === 'buyer' ? 'buyer-estimate' : null)
   );
   const [prefill] = useState(prefillState?.prefill || null);
+
+  // Reset to calculator hub when nav link is clicked (same-route re-navigation)
+  useEffect(() => {
+    if (!prefillState?.openCalc && !prefillState?.prefill && !prefillState?.sheetType) {
+      setActive(null);
+    }
+  }, [location.key]);
+
   const { data: counties } = useQuery({ queryKey: ['counties'], queryFn: () => api.get('/counties/').then(r => r.data) });
   const c = counties || [];
   const onBack = () => { setActive(null); window.history.replaceState({}, ''); };
