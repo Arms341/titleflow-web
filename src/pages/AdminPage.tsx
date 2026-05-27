@@ -256,6 +256,27 @@ function FeeSettingsPanel() {
         </div>
       </div>
       <ReissueDiscountTiers />
+      <div className="bg-white rounded-lg shadow border p-6">
+        <h3 className="font-semibold text-gray-800 mb-2">Custom Fees</h3>
+        <p className="text-sm text-gray-500 mb-4">Add company-specific fees. These appear as line items on seller and/or buyer sheets.</p>
+        {(form.custom_fees || []).length > 0 && (
+          <table className="w-full text-sm mb-4">
+            <thead><tr className="border-b"><th className="text-left py-2 text-gray-500 font-medium">Fee Name</th><th className="text-left py-2 text-gray-500 font-medium">Amount</th><th className="text-left py-2 text-gray-500 font-medium">Type</th><th className="text-left py-2 text-gray-500 font-medium">Applies To</th><th className="py-2"></th></tr></thead>
+            <tbody>
+              {(form.custom_fees || []).map((cf: any, idx: number) => (
+                <tr key={idx} className="border-b border-gray-100">
+                  <td className="py-2"><input type="text" value={cf.label} onChange={e => { const arr = [...form.custom_fees]; arr[idx] = { ...cf, label: e.target.value }; u('custom_fees', arr); }} className="w-full px-2 py-1 border rounded text-sm" /></td>
+                  <td className="py-2"><input type="number" step="0.01" value={cf.amount} onChange={e => { const arr = [...form.custom_fees]; arr[idx] = { ...cf, amount: parseFloat(e.target.value) || 0 }; u('custom_fees', arr); }} className="w-24 px-2 py-1 border rounded text-sm" /></td>
+                  <td className="py-2"><select value={cf.type} onChange={e => { const arr = [...form.custom_fees]; arr[idx] = { ...cf, type: e.target.value }; u('custom_fees', arr); }} className="px-2 py-1 border rounded text-sm"><option value="flat">Flat $</option><option value="percent">% of Price</option></select></td>
+                  <td className="py-2"><select value={cf.side} onChange={e => { const arr = [...form.custom_fees]; arr[idx] = { ...cf, side: e.target.value }; u('custom_fees', arr); }} className="px-2 py-1 border rounded text-sm"><option value="seller">Seller</option><option value="buyer">Buyer</option><option value="both">Both</option></select></td>
+                  <td className="py-2 text-right"><button onClick={() => { const arr = form.custom_fees.filter((_: any, i: number) => i !== idx); u('custom_fees', arr); }} className="text-xs text-red-500 hover:text-red-700">Remove</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <button onClick={() => u('custom_fees', [...(form.custom_fees || []), { label: '', amount: 0, type: 'flat', side: 'seller' }])} className="text-sm text-blue-600 hover:text-blue-800 font-medium">+ Add Custom Fee</button>
+      </div>
       <div className="flex items-center gap-4">
         <button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}
           className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm disabled:opacity-50">

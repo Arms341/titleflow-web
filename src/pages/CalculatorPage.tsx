@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { api } from '../lib/api';
+import { useBrand } from '../contexts/BrandContext';
 
 const CALCS = [
   { slug: 'seller-net-sheet', name: 'Seller Net Sheet', icon: '🏠', desc: 'Calculate seller net proceeds', color: 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100' },
@@ -337,6 +338,8 @@ function ResultPanel({ result, title }: { result: any; title: string }) {
 
 // ── 1. SELLER NET SHEET ──
 function SellerForm({ counties, onBack, prefill }: { counties: any[]; onBack: () => void; prefill?: any }) {
+  const { company } = useBrand();
+  const sellerToggles = (() => { try { const fs = company?.fee_settings; if (!fs) return {}; const parsed = typeof fs === 'string' ? JSON.parse(fs) : fs; return parsed?.seller_toggles || {}; } catch { return {}; } })();
   const { data: taxDistricts } = useQuery({ queryKey: ['tax-districts'], queryFn: () => api.get('/tax_districts/').then(r => r.data) });
   const allDistricts = taxDistricts || [];
   const defaults = { sale_price: '350000', existing_loan_balance: '150000', seller_agent_commission_pct: '3.0', buyer_agent_commission_pct: '3.0', county_id: counties[0]?.id?.toString() || '1', closing_date: '2026-07-15', prior_title_insurance: false, years_since_prior_policy: '1', hoa_payoff: '0', seller_concessions: '0', include_home_warranty: true, include_survey: false, miscellaneous_fees: '0', annual_property_taxes: '0', property_address: '', client_name: '', tax_district_id: '', home_warranty_amount: '700', homestead: false };
@@ -395,11 +398,17 @@ function SellerForm({ counties, onBack, prefill }: { counties: any[]; onBack: ()
             </div>
           </Field>
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.include_home_warranty} onChange={e => s('include_home_warranty', e.target.checked)} /> Include Home Warranty</label>
-            {f.include_home_warranty && <Field label="Home Warranty Amount"><Inp value={f.home_warranty_amount} onChange={(v: string) => s('home_warranty_amount', v)} prefix="$" /></Field>}
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.include_survey} onChange={e => s('include_survey', e.target.checked)} /> Include Survey</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.prior_title_insurance} onChange={e => s('prior_title_insurance', e.target.checked)} /> Prior Title Insurance (Reissue Discount)</label>
-            {f.prior_title_insurance && <Field label="Years Since Prior Policy"><select value={f.years_since_prior_policy} onChange={e => s('years_since_prior_policy', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">{[1,2,3,4,5].map(y => <option key={y} value={y}>{y} year{y > 1 ? 's' : ''}</option>)}</select></Field>}
+            {sellerToggles.home_warranty !== false && (<>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.include_home_warranty} onChange={e => s('include_home_warranty', e.target.checked)} /> Include Home Warranty</label>
+              {f.include_home_warranty && <Field label="Home Warranty Amount"><Inp value={f.home_warranty_amount} onChange={(v: string) => s('home_warranty_amount', v)} prefix="$" /></Field>}
+            </>)}
+            {sellerToggles.survey !== false && (
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.include_survey} onChange={e => s('include_survey', e.target.checked)} /> Include Survey</label>
+            )}
+            {sellerToggles.reissue_discount && (<>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.prior_title_insurance} onChange={e => s('prior_title_insurance', e.target.checked)} /> Prior Title Insurance (Reissue Discount)</label>
+              {f.prior_title_insurance && <Field label="Years Since Prior Policy"><select value={f.years_since_prior_policy} onChange={e => s('years_since_prior_policy', e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">{[1,2,3,4,5].map(y => <option key={y} value={y}>{y} year{y > 1 ? 's' : ''}</option>)}</select></Field>}
+            </>)}
           </div>
           <Section title="Other Costs" />
           <div className="grid grid-cols-2 gap-3"><Field label="HOA Payoff"><Inp value={f.hoa_payoff} onChange={(v: string) => s('hoa_payoff', v)} prefix="$" /></Field><Field label="Seller Concessions"><Inp value={f.seller_concessions} onChange={(v: string) => s('seller_concessions', v)} prefix="$" /></Field></div>
