@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const fmt = (v: any) => { if (v == null) return '-'; const n = typeof v === 'string' ? parseFloat(v) : v; if (isNaN(n)) return '-'; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n); };
 
@@ -14,6 +15,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 function OrderDetail({ order, onBack, onDelete }: { order: any; onBack: () => void; onDelete: (id: number) => void }) {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const out = order.saved_sheet_output || {};
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -55,11 +57,26 @@ function OrderDetail({ order, onBack, onDelete }: { order: any; onBack: () => vo
           </div>
         )}
 
-        <div className="mt-6 pt-4 border-t flex justify-end">
+        <div className="mt-6 pt-4 border-t flex justify-between items-center">
+          <div />
           <button onClick={() => { if (confirm(`Delete Order #${order.id}? This cannot be undone.`)) onDelete(order.id); }}
             className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 text-sm font-medium">Delete Order</button>
         </div>
       </div>
+
+      {isAdmin && (
+      <div className="mt-4 p-4 bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg text-white shadow">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-slate-300 uppercase tracking-wide">Powered by West Texas Tech Solutions</p>
+            <p className="text-sm font-semibold mt-1">Title companies save up to 40% on ACH &amp; payment processing</p>
+            <p className="text-xs text-slate-300 mt-1">Dedicated rates for escrow disbursements, earnest money, and wire transfers</p>
+          </div>
+          <a href="https://westtexastechsolutions.com/title" target="_blank" rel="noopener noreferrer"
+            className="shrink-0 px-4 py-2 bg-amber-500 text-slate-900 rounded-lg text-sm font-bold hover:bg-amber-400 transition-colors">Learn More</a>
+        </div>
+      </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const fmt = (v: any) => { if (v == null) return '-'; const n = typeof v === 'string' ? parseFloat(v) : v; if (isNaN(n)) return '-'; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n); };
 
@@ -296,6 +297,7 @@ function OrderFormModal({ sheet, onClose, onSuccess }: { sheet: any; onClose: ()
 
 // -- Sheet Detail View --
 function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -366,7 +368,7 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
               ))}
             </div>
           </div>
-        )}
+          )}
 
         <div className="bg-gray-50 rounded-lg border p-4 space-y-2 mb-6">
           <h3 className="font-semibold text-gray-700 text-sm uppercase mb-2">Summary</h3>
@@ -407,6 +409,7 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
             </div>
           </div>
         ) : (
+          <>
           <div className="mb-6 p-4 bg-emerald-50 border-2 border-emerald-300 rounded-lg">
             <div className="flex items-center gap-3">
               <span className="text-3xl">&#10003;</span>
@@ -417,6 +420,20 @@ function SheetDetail({ sheet, onBack }: { sheet: any; onBack: () => void }) {
               </div>
             </div>
           </div>
+          {isAdmin && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-300 uppercase tracking-wide">Powered by West Texas Tech Solutions</p>
+                <p className="text-sm font-semibold mt-1">Title companies save up to 40% on ACH &amp; payment processing</p>
+                <p className="text-xs text-slate-300 mt-1">Dedicated rates for escrow disbursements, earnest money, and wire transfers</p>
+              </div>
+              <a href="https://westtexastechsolutions.com/title" target="_blank" rel="noopener noreferrer"
+                className="shrink-0 px-4 py-2 bg-amber-500 text-slate-900 rounded-lg text-sm font-bold hover:bg-amber-400 transition-colors">Learn More</a>
+            </div>
+          </div>
+          )}
+          </>
         )}
 
         {/* Share / PDF / Email / Edit / Sign buttons */}
