@@ -84,6 +84,7 @@ export interface Company {
   address?: string;
   tagline?: string;
   disclaimer_text?: string;
+  fee_settings?: string | null;
 }
 
 // -- Pagination --
