@@ -65,15 +65,15 @@ function OrderDetail({ order, onBack, onDelete }: { order: any; onBack: () => vo
       </div>
 
       {isAdmin && (
-      <div className="mt-4 p-4 bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg text-white shadow">
+      <div className="mt-4 p-4 bg-black rounded-lg text-white shadow">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-slate-300 uppercase tracking-wide">Powered by West Texas Tech Solutions</p>
+            <p className="text-xs text-gray-300 uppercase tracking-wide">Powered by West Texas Business Solutions</p>
             <p className="text-sm font-semibold mt-1">Title companies save up to 40% on ACH &amp; payment processing</p>
-            <p className="text-xs text-slate-300 mt-1">Dedicated rates for escrow disbursements, earnest money, and wire transfers</p>
+            <p className="text-xs text-gray-300 mt-1">Dedicated rates for escrow disbursements, earnest money, and wire transfers</p>
           </div>
-          <a href="https://westtexastechsolutions.com/title" target="_blank" rel="noopener noreferrer"
-            className="shrink-0 px-4 py-2 bg-amber-500 text-slate-900 rounded-lg text-sm font-bold hover:bg-amber-400 transition-colors">Learn More</a>
+          <a href="https://westtexasbusinesssolutions.com/title" target="_blank" rel="noopener noreferrer"
+            className="shrink-0 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-500 transition-colors">Learn More</a>
         </div>
       </div>
       )}
